@@ -119,15 +119,15 @@ start(Connection, Collection, Cursor, BatchSize, Batch) ->
 
 %% @hidden
 init([Owner, Connection, Collection, Cursor, BatchSize, Batch]) ->
-    Monitor = erlang:monitor(process, Owner),
-    {ok, #state{
-            connection = Connection,
-            collection = Collection,
-            cursor = Cursor,
-            batchsize = BatchSize,
-            batch = Batch,
-            monitor = Monitor
-           }}.
+  Monitor = erlang:monitor(process, Owner),
+  {ok, #state{
+    connection = Connection,
+    collection = Collection,
+    cursor = Cursor,
+    batchsize = BatchSize,
+    batch = format_batch(Batch),
+    monitor = Monitor
+  }}.
 
 %% @hidden
 handle_call({next, Timeout}, _From, State) ->
@@ -207,3 +207,7 @@ rest_i(State, Acc, Limit, Timeout) ->
     {{Doc}, UpdatedState} ->
       rest_i(UpdatedState, [Doc | Acc], Limit - 1, Timeout)
   end.
+
+%% @private
+format_batch([#{<<"cursor">> := #{<<"firstBatch">> := Batch}}]) -> Batch;
+format_batch(Reply) -> Reply.

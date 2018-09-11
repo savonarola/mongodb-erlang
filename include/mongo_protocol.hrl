@@ -32,6 +32,7 @@
 
 %% read
 -record('query', {
+  database :: database(),  % overrides connection's database
   collection :: colldb(),
   tailablecursor = false :: boolean(),
   slaveok = false :: boolean(),
@@ -52,6 +53,7 @@
 
 %% system
 -record(ensure_index, {
+  database :: database(),
   collection :: colldb(),
   index_spec
 }).
@@ -71,9 +73,9 @@
 -record(reply, {
   cursornotfound :: boolean(),
   queryerror :: boolean(),
-  awaitcapable :: boolean(),
+  awaitcapable = false :: boolean(),
   cursorid :: mc_worker_api:cursorid(),
-  startingfrom :: integer(),
+  startingfrom = 0 :: integer(),
   documents :: [map()]
 }).
 -endif.
