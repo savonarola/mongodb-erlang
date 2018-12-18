@@ -6,3 +6,5 @@ logs/
 *.beam
 variables-ct*
 *.iml
+rebar.lock
+_build
