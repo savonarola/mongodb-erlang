@@ -147,15 +147,15 @@ checkIfHasPrimary_Res(_) ->
   replicaSetWithPrimary.
 
 %% @private
-stop_servers_not_in_list(HostsList, Tab) ->
-  ets:foldl(
-    fun(E, Acc) ->
-      case lists:member(E#mc_server.host, HostsList) of
-        false ->
-          ets:insert(Tab, E#mc_server{type = deleted}),
-          unlink(E#mc_server.pid),
-          exit(E#mc_server.pid, kill),
-          [E#mc_server.host | Acc];
-        true -> Acc
-      end
-    end, [], Tab).
+%stop_servers_not_in_list(HostsList, Tab) ->
+%  ets:foldl(
+%    fun(E, Acc) ->
+%      case lists:member(E#mc_server.host, HostsList) of
+%        false ->
+%          ets:insert(Tab, E#mc_server{type = deleted}),
+%          unlink(E#mc_server.pid),
+%          exit(E#mc_server.pid, kill),
+%          [E#mc_server.host | Acc];
+%        true -> Acc
+%      end
+%    end, [], Tab).

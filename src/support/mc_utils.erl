@@ -68,7 +68,7 @@ get_timeout() ->
     undefined -> infinity
   end.
 
-hmac(One, Two) -> crypto:hmac(sha, One, Two).
+hmac(One, Two) -> crypto:mac(hmac, sha, One, Two).
 
 pw_key(Nonce, Username, Password) ->
   bson:utf8(binary_to_hexstr(crypto:hash(md5, [Nonce, Username, pw_hash(Username, Password)]))).
