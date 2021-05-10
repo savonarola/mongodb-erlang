@@ -49,22 +49,22 @@ next(Cursor, Timeout) ->
     exit:{noproc, _} -> error
   end.
 
--spec next_batch(pid()) -> error | {bson:document()}.
+-spec next_batch(pid()) -> error | {bson:document()} | [bson:document()] | [map()].
 next_batch(Cursor) ->
   next_batch(Cursor, cursor_default_timeout()).
 
--spec next_batch(pid(), timeout()) -> error | {} | {bson:document()}.
+-spec next_batch(pid(), timeout()) -> error | {} | {bson:document()} | [bson:document()] | [map()].
 next_batch(Cursor, Timeout) ->
   try gen_server:call(Cursor, {next_batch, Timeout}, Timeout)
   catch
     exit:{noproc, _} -> error
   end.
 
--spec rest(pid()) -> [bson:document()] | error.
+-spec rest(pid()) -> [bson:document()] | [map()] | error.
 rest(Cursor) ->
   rest(Cursor, cursor_default_timeout()).
 
--spec rest(pid(), timeout()) -> [bson:document()] | error.
+-spec rest(pid(), timeout()) -> [bson:document()] | [map()] | error.
 rest(Cursor, Timeout) ->
   try gen_server:call(Cursor, {rest, infinity, Timeout}, Timeout)
   catch
