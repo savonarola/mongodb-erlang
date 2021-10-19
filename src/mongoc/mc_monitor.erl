@@ -134,9 +134,9 @@ loop(State = #state{type = Type, host = Host, port = Port, topology = Topology, 
   State#state{timer = undefined, counter = Counter + 1}.
 
 %% @private
-maybe_recheck(unknown, Topology, Server, _, _, _) ->
+maybe_recheck(unknown, Topology, Server, _, _HB_MS, MinHB_MS) ->
   gen_server:cast(Topology, {server_to_unknown, Server}),
-  next_loop(self(), 1);
+  next_loop(self(), MinHB_MS);
 maybe_recheck(_, Topology, Server, ConnectArgs, HB_MS, MinHB_MS) ->
   timer:sleep(MinHB_MS),
   try check(ConnectArgs, Server) of
