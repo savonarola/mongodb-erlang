@@ -1,11 +1,17 @@
 %% -*- mode: erlang -*-
-{"3.0.8",
- [{<<"3.0.[0-7]">>, [
+{"3.0.9",
+ [{"3.0.8", [
+    {load_module, mc_monitor, brutal_purge, soft_purge, []}
+  ]},
+  {<<"3.0.[0-7]">>, [
     {restart_application, mongodb}
   ]},
   {<<".*">>, []}
  ],
- [{<<"3.0.[0-7]">>, [
+ [{"3.0.8", [
+    {load_module, mc_monitor, brutal_purge, soft_purge, []}
+  ]},
+  {<<"3.0.[0-7]">>, [
     {restart_application, mongodb}
   ]},
   {<<".*">>, []}
