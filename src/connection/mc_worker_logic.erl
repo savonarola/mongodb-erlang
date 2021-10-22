@@ -123,10 +123,28 @@ process_write_response(From) ->
     end
   end.
 
+may_ipv6(Host, Opts) when tuple_size(Host) =:= 4 ->
+  Opts;
+may_ipv6(Host, Opts) when tuple_size(Host) =:= 8 ->
+  [inet6 | Opts];
+may_ipv6(Host, Opts) when is_list(Host) ->
+  case inet:parse_address(Host) of
+    {ok, IPAddr} ->
+      may_ipv6(IPAddr, Opts);
+    _ ->
+      case inet:getaddr(Host, inet6) of
+        {ok, _} ->
+          [inet6 | Opts];
+        _ ->
+          Opts
+      end
+  end.
+
 %% @private
 do_connect(Host, Port, Timeout, true, Opts) ->
   {ok, _} = application:ensure_all_started(ssl),
-  ssl:connect(Host, Port, [binary, {active, true}, {packet, raw}] ++ Opts, Timeout);
+  NOpts = may_ipv6(Host, Opts),
+  ssl:connect(Host, Port, [binary, {active, true}, {packet, raw}] ++ NOpts, Timeout);
 do_connect(Host, Port, Timeout, false, _) ->
-  gen_tcp:connect(Host, Port, [binary, {active, true}, {packet, raw}], Timeout).
-
+  Opts = may_ipv6(Host, []),
+  gen_tcp:connect(Host, Port, [binary, {active, true}, {packet, raw}] ++ Opts, Timeout).
