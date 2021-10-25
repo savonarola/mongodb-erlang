@@ -132,11 +132,11 @@ may_ipv6(Host, Opts) when is_list(Host) ->
     {ok, IPAddr} ->
       may_ipv6(IPAddr, Opts);
     _ ->
-      case inet:getaddr(Host, inet6) of
+      case inet:getaddr(Host, inet) of
         {ok, _} ->
-          [inet6 | Opts];
+          Opts;
         _ ->
-          Opts
+          [inet6 | Opts]
       end
   end.
 
