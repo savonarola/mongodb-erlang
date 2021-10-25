@@ -1,6 +1,10 @@
 %% -*- mode: erlang -*-
-{"3.0.9",
- [{"3.0.8", [
+{"3.0.10",
+ [{"3.0.9", [
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []}
+  ]},
+  {"3.0.8", [
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []}
   ]},
   {<<"3.0.[0-7]">>, [
@@ -8,7 +12,11 @@
   ]},
   {<<".*">>, []}
  ],
- [{"3.0.8", [
+ [{"3.0.9", [
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []}
+  ]},
+  {"3.0.8", [
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []}
   ]},
   {<<"3.0.[0-7]">>, [
