@@ -151,7 +151,7 @@ do_connect(Host, Port, Timeout, true, Opts) ->
   ct:print("mc_worker_logic:do_connect([~p])", [[Host, Port, AllOpts, Timeout]]),
   Res = ssl:connect(Host, Port, AllOpts, Timeout),
   ct:print("mc_worker_logic:do_connect, done"),
-  Res.
+  Res;
 
 do_connect(Host, Port, Timeout, false, _) ->
   Opts = may_ipv6(Host, []),
