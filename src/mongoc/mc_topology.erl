@@ -101,25 +101,32 @@ get_pool(Topology, Options) ->
 get_pool(RPMode, RPTags, State) ->
   TO = State#topology_state.topology_opts,
   ServerSelectionTimeoutMS = mc_utils:get_value(serverSelectionTimeoutMS, TO, 30000),
+  ct:print("get_pool, spawning"),
   Pid = spawn(?MODULE, get_pool, [self(), State, RPMode, RPTags]),
   receive
     {Pid, {error, Reason}, _} ->
-      {error, Reason};
+          ct:print("get_pool, receive error: ~p", [Reason]),
+          {error, Reason};
     {Pid, Pool, Type} ->
-      {ok, #{pool => Pool, server_type => Type, read_preference => #{mode => RPMode, tags => RPTags}}}
+          ct:print("get_pool, receive pool: type=~p", [Type]),
+          {ok, #{pool => Pool, server_type => Type, read_preference => #{mode => RPMode, tags => RPTags}}}
   after
     ServerSelectionTimeoutMS ->
+      ct:print("get_pool, receive timeout"),
       exit(Pid, timeout),
       mc_topology:update_topology(State#topology_state.self),
       {error, timeout}
   end.
 
 get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags) ->
+  ct:print("get_pool(spawned) start"),
   case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
-    #mc_server{pid = Pid, type = Type} ->
+    #mc_server{pid = Pid, type = Type} = Server ->
+          ct:print("get_pool(spawned), Server selected: ~p", [Server]),
       Pool = mc_server:get_pool(Pid, TM),
       From ! {self(), Pool, Type};
     undefined ->
+      ct:print("get_pool(spawned), server undefined"),
       timer:sleep(100),
       get_pool(From, State, RPMode, Tags)
   end.
