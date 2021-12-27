@@ -46,6 +46,7 @@
 %%%===================================================================
 
 start_link(Topology, Server, HostPort, Topts, Wopts) ->
+    ct:print("mc_monitor:start_link(~p)", [Server]),
   gen_server:start_link(?MODULE, [Topology, Server, HostPort, Topts, Wopts], []).
 
 stop(Pid) ->
@@ -152,6 +153,7 @@ maybe_recheck(_, Topology, Server, ConnectArgs, HB_MS, MinHB_MS) ->
 
 %% @private
 check(ConnectArgs, Server) ->
+  ct:print("mc_monitor:check start: server=~p", [Server]),
   Start = os:timestamp(),
   {ok, Conn} = mc_worker_api:connect(ConnectArgs),
   {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
