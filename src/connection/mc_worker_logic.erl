@@ -147,7 +147,12 @@ may_ipv6(Host, Opts) when is_list(Host) ->
 do_connect(Host, Port, Timeout, true, Opts) ->
   {ok, _} = application:ensure_all_started(ssl),
   NOpts = may_ipv6(Host, Opts),
-  ssl:connect(Host, Port, [binary, {active, true}, {packet, raw}] ++ NOpts, Timeout);
+  AllOpts = [binary, {active, true}, {packet, raw}] ++ NOpts,
+  ct:print("mc_worker_logic:do_connect([~p])", [[Host, Port, AllOpts, Timeout]]),
+  Res = ssl:connect(Host, Port, AllOpts, Timeout),
+  ct:print("mc_worker_logic:do_connect, done"),
+  Res.
+
 do_connect(Host, Port, Timeout, false, _) ->
   Opts = may_ipv6(Host, []),
   gen_tcp:connect(Host, Port, [binary, {active, true}, {packet, raw}] ++ Opts, Timeout).
