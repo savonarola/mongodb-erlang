@@ -118,6 +118,7 @@ init_seeds([Addr | Seeds], Tab, Topts, Wopts) ->
 
 %% @private
 start_seed([], Host, Tab, Topts, Wopts) ->
+  ct:print("Starting seed: ~p", [Host]),
   {ok, Pid} = mc_server:start(self(), Host, Topts, Wopts),
   MRef = erlang:monitor(process, Pid),
   ets:insert(Tab, #mc_server{pid = Pid, mref = MRef, host = Host});

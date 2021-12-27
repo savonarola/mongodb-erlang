@@ -125,6 +125,7 @@ loop(State = #state{type = Type, host = Host, port = Port, topology = Topology, 
   ConnectArgs = form_args(Host, Port, Timeout, WOpts),
   try check(ConnectArgs, Server) of
     Res ->
+      ct:print("mc_monitor loop check result: ~p", [Res]),
       gen_server:cast(Topology, Res),
       next_loop(self(), HB_MS)
   catch

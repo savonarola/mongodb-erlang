@@ -119,7 +119,7 @@ get_pool(RPMode, RPTags, State) ->
   end.
 
 get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags) ->
-  ct:print("get_pool(spawned) start"),
+  ct:print("get_pool(spawned) start, RPMode=~p", [RPMode]),
   case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
     #mc_server{pid = Pid, type = Type} = Server ->
           ct:print("get_pool(spawned), Server selected: ~p", [Server]),
