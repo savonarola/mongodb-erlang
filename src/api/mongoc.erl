@@ -82,10 +82,18 @@ transaction_query(Topology, Transaction, Options) ->
 
 -spec transaction_query(pid() | atom(), fun(), map(), integer() | infinity) -> any().
 transaction_query(Topology, Transaction, Options, Timeout) ->
+  ct:print("mongoc:transaction_query start"),
   case mc_topology:get_pool(Topology, Options) of
     {ok, Pool = #{pool := C}} ->
-      poolboy:transaction(C, fun(Worker) -> Transaction(Pool#{pool => Worker}) end, Timeout);
+      ct:print("mongoc:transaction_query got pool"),
+      poolboy:transaction(C,
+                          fun(Worker) ->
+                                  ct:print("mongoc:transaction_query inside poolboy:transaction"),
+                                  Transaction(Pool#{pool => Worker})
+                          end,
+                          Timeout);
     Error ->
+      ct:print("mongoc:transaction_query error: ~p", [Error]),
       Error
   end.
 
