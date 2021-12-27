@@ -23,7 +23,10 @@ connect_to_database(Conf) ->
   Port = mc_utils:get_value(port, Conf, 27017),
   SSL = mc_utils:get_value(ssl, Conf, false),
   SslOpts = mc_utils:get_value(ssl_opts, Conf, []),
-  do_connect(Host, Port, Timeout, SSL, SslOpts).
+  ct:print("mc_worker_logic:connect_to_database, do_connect"),
+  Res = do_connect(Host, Port, Timeout, SSL, SslOpts),
+  ct:print("mc_worker_logic:connect_to_database, do_connect done"),
+  Res.
 
 %% Get server version. This is need to choose default authentication method.
 -spec get_version(port(), binary(), module()) -> float().
