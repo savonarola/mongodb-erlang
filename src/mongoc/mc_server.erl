@@ -166,10 +166,12 @@ init_monitor(#state{topology = Topology, host = Host, port = Port, topology_opts
 
 %% @private
 init_pool(#state{host = Host, port = Port, pool_conf = Conf, worker_opts = Wopts}) ->
+  ct:print("mc_server:init_pool"),
   WO = lists:append([{host, Host}, {port, Port}], Wopts),
   %{ok, Child} = mc_pool_sup:start_pool(Conf, WO),
   PoolArgs = [{worker_module, mc_worker}] ++ Conf,
   {ok, Child} = poolboy:start_link(PoolArgs, WO),
+  ct:print("mc_server:init_pool, Child=~p", [Child]),
   link(Child),
   Child.
 
