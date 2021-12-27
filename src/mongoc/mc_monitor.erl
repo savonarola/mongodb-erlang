@@ -156,7 +156,9 @@ check(ConnectArgs, Server) ->
   ct:print("mc_monitor:check start: server=~p", [Server]),
   Start = os:timestamp(),
   {ok, Conn} = mc_worker_api:connect(ConnectArgs),
+  ct:print("mc_monitor:check connected"),
   {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
+  ct:print("mc_monitor:check isMaster: ~p", [IsMaster]),
   Finish = os:timestamp(),
   mc_worker_api:disconnect(Conn),
   {monitor_ismaster, Server, IsMaster, timer:now_diff(Finish, Start)}.
