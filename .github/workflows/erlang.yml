@@ -10,8 +10,8 @@ jobs:
     strategy:
       matrix:
         otp_release:
-          - "24.2"
-          - "23.3"
+          - 24
+          - 23
 
     runs-on: ubuntu-latest
     services:
@@ -21,7 +21,7 @@ jobs:
         - 27017:27017
         
     container:
-      image: erlang:${{ otp_release }}
+      image: erlang:${{ matrix.otp_release }}
 
     steps:
     - uses: actions/checkout@v2
