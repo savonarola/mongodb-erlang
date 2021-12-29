@@ -9,7 +9,7 @@ jobs:
   test:
     strategy:
       matrix:
-        otp_release:
+        otp:
           - 24
           - 23
 
@@ -20,11 +20,11 @@ jobs:
         ports:
         - 27017:27017
         
-    container:
-      image: erlang:${{ matrix.otp_release }}
-
     steps:
     - uses: actions/checkout@v2
+    - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
     - name: test
       run: make tests
     - name: edoc
