@@ -146,7 +146,6 @@ checkIfHasPrimary_Res([]) ->
 checkIfHasPrimary_Res(_) ->
   replicaSetWithPrimary.
 
-%% @private
 %stop_servers_not_in_list(HostsList, Tab) ->
 %  ets:foldl(
 %    fun(E, Acc) ->
