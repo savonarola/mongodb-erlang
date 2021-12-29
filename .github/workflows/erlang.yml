@@ -21,7 +21,7 @@ jobs:
         - 27017:27017
         
     container:
-      image: erlang:${otp_release}
+      image: erlang:${{ otp_release }}
 
     steps:
     - uses: actions/checkout@v2
