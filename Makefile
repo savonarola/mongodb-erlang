@@ -1,25 +1,15 @@
-PROJECT = mongodb
+REBAR = $(shell which rebar3)
 
-DIALYZER = dialyzer
-REBAR = $(shell which rebar || echo ./rebar)
-
-all: app
-
-# Application.
-
-deps:
-	@$(REBAR) get-deps
-
-app: deps
+app:
 	@$(REBAR) compile
 
-clean:
-	@$(REBAR) clean
-	rm -f test/*.beam
+clean: clean-docs
+	rm -rf _build
+	rm -rf rebar.lock
 	rm -f erl_crash.dump
 
 docs: clean-docs
-	@$(REBAR) doc skip_deps=true
+	@$(REBAR) edoc
 
 clean-docs:
 	rm -f doc/*.css
@@ -27,27 +17,16 @@ clean-docs:
 	rm -f doc/*.png
 	rm -f doc/edoc-info
 
-# Tests.
-tests: clean app eunit ct
+# Tests
+tests: app eunit ct
 
 eunit:
-	@$(REBAR) eunit skip_deps=true
+	@$(REBAR) as test eunit
 
 ct: app
-	@$(REBAR) ct skip_deps=true
+	@$(REBAR) as test ct
 
-# Dialyzer.
-.$(PROJECT).plt: 
-	@$(DIALYZER) --build_plt --output_plt .$(PROJECT).plt -r deps \
-		--apps erts kernel stdlib sasl inets crypto public_key ssl mnesia syntax_tools asn1
+dialyzer:
+	@$(REBAR) dialyzer
 
-clean-plt: 
-	rm -f .$(PROJECT).plt
-
-build-plt: clean-plt .$(PROJECT).plt
-
-dialyze: .$(PROJECT).plt
-	@$(DIALYZER) -I include -I deps --src -r src --plt .$(PROJECT).plt --no_native \
-		-Werror_handling -Wrace_conditions -Wunmatched_returns
-
-.PHONY: deps clean-plt build-plt dialyze
+.PHONY: app clean docs clean-docs tests eunit ct dialyzer

@@ -13,7 +13,7 @@
 -include("mongoc.hrl").
 -include("mongo_protocol.hrl").
 
--type(transaction_result(T) :: T | {error, term()}).
+-type transaction_result(T) :: T | {error, term()}.
 
 %% API
 -export([

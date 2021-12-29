@@ -1,8 +1,7 @@
 .*
-!.travis.yml
-ebin/
-deps/
 logs/
+_build
 *.beam
 variables-ct*
 *.iml
+rebar.lock
