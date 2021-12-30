@@ -18,26 +18,20 @@
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--spec(start_link(any(), any(), any()) ->
-  {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
--spec(init(Args :: term()) ->
-  {ok, State :: #topology_state{}} | {ok, State :: #topology_state{}, timeout() | hibernate} |
-  {stop, Reason :: term()} | ignore).
--spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
-    State :: #topology_state{}) -> term()).
--spec(code_change(OldVsn :: term() | {down, term()}, State :: #topology_state{},
-    Extra :: term()) ->
-  {ok, NewState :: #topology_state{}} | {error, Reason :: term()}).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec(start_link(any(), any(), any()) ->
+  {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
 start_link(Seeds, TopologyOptions, WorkerOptions) ->
   gen_server:start_link(?MODULE, [Seeds, TopologyOptions, WorkerOptions], []).
 
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
+-spec(init(Args :: term()) ->
+  {ok, State :: #topology_state{}} | {ok, State :: #topology_state{}, timeout() | hibernate} |
+  {stop, Reason :: term()} | ignore).
 init([SeedsList, TopologyOptions, WorkerOptions]) ->
   try_register(TopologyOptions),
   {Type, SetName, Seeds} = parse_seeds(SeedsList),
@@ -64,9 +58,14 @@ init([SeedsList, TopologyOptions, WorkerOptions]) ->
   gen_server:cast(self(), init_seeds),
   {ok, State}.
 
+-spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
+    State :: #topology_state{}) -> term()).
 terminate(_Reason, _State) ->
   ok.
 
+-spec(code_change(OldVsn :: term() | {down, term()}, State :: #topology_state{},
+    Extra :: term()) ->
+  {ok, NewState :: #topology_state{}} | {error, Reason :: term()}).
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 

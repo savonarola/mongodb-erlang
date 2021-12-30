@@ -1,0 +1,31 @@
+name: Erlang CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+
+  test:
+    strategy:
+      matrix:
+        otp:
+          - 24
+          - 23
+
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:5
+        ports:
+        - 27017:27017
+        
+    steps:
+    - uses: actions/checkout@v2
+    - uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{matrix.otp}}
+    - name: test
+      run: make tests
+    - name: edoc
+      run: make docs
