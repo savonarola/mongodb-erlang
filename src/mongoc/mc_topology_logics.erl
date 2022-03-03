@@ -18,10 +18,17 @@
 -define(UNKN_GHST(ST), ST =:= unknown; ST =:= rsGhost).
 -define(NOT_MAX(E, M), E =/= undefined, M =/= undefined, E < M).
 
+-define(LOG_TOPOLOGY_ERROR(Configured, Actual),
+  logger:error("Configured mongo client topology does not match actual mongo install topology. Configured: ~p; Actual: ~p", [Configured, Actual])).
+
+-define(LOG_SET_NAME_ERROR(Configured, Actual),
+  logger:error("Configured mongo set name does not match actual mongo install set name. Configured: ~p; Actual: ~p", [Configured, Actual])).
+
 %% API
--export([update_topology_state/2, init_seeds/4, init_seeds/1]).
+-export([update_topology_state/2, init_seeds/4, init_seeds/1, validate_server_and_config/3, server_type/1]).
 
 update_topology_state(#mc_server{type = SType, pid = Pid}, State = #topology_state{type = sharded}) when ?NON_SHARDED(SType) -> %% SHARDED
+  ?LOG_TOPOLOGY_ERROR(sharded, SType),
   exit(Pid, kill),
   State;
 update_topology_state(_, State = #topology_state{type = sharded}) ->
@@ -33,6 +40,7 @@ update_topology_state(#mc_server{type = rsGhost}, State = #topology_state{type =
 update_topology_state(#mc_server{type = standalone}, State = #topology_state{type = unknown, seeds = Seeds}) when length(Seeds) =< 1 ->
   State#topology_state{type = standalone};
 update_topology_state(#mc_server{type = standalone, pid = Pid}, State = #topology_state{type = unknown}) ->
+  ?LOG_TOPOLOGY_ERROR(unknown, standalone),
   exit(Pid, kill),
   State;
 update_topology_state(#mc_server{type = mongos}, State = #topology_state{type = unknown}) ->
@@ -48,10 +56,12 @@ update_topology_state(
   set_possible_primary(Tab, Primary),
   State#topology_state{type = checkIfHasPrimary(Tab), setName = SetName};
 update_topology_state(#mc_server{type = SType, pid = Pid}, State = #topology_state{type = unknown}) when ?SEC_ARB_OTH(SType) ->
+  ?LOG_TOPOLOGY_ERROR(unknown, SType),
   exit(Pid, kill),
   State;
 update_topology_state(#mc_server{type = SType, pid = Pid},
     State = #topology_state{type = replicaSetNoPrimary}) when ?STAL_MONGS(SType) ->  %% REPLICASETNOPRIMARY
+  ?LOG_TOPOLOGY_ERROR(replicaSetNoPrimary, SType),
   exit(Pid, kill),
   State;
 update_topology_state(Server = #mc_server{type = SType, setName = SetName},
@@ -64,7 +74,8 @@ update_topology_state(
   init_seeds(lists:flatten([Hosts, Arbiters, Passives]), Tab, Topts, Wopts),
   set_possible_primary(Tab, Primary),
   State#topology_state{setName = SetName};
-update_topology_state(#mc_server{type = SType, pid = Pid}, State = #topology_state{type = replicaSetNoPrimary}) when ?SEC_ARB_OTH(SType) ->
+update_topology_state(#mc_server{type = SType, pid = Pid, setName = SSetName}, State = #topology_state{type = replicaSetNoPrimary, setName = TSetName}) when ?SEC_ARB_OTH(SType) ->
+  ?LOG_SET_NAME_ERROR(TSetName, SSetName),
   exit(Pid, kill),
   State;
 update_topology_state(#mc_server{type = SType},
@@ -72,6 +83,7 @@ update_topology_state(#mc_server{type = SType},
   State#topology_state{type = checkIfHasPrimary(Tab)};
 update_topology_state(#mc_server{type = SType, pid = Pid},
     State = #topology_state{type = replicaSetWithPrimary, servers = Tab}) when ?STAL_MONGS(SType) ->
+  ?LOG_TOPOLOGY_ERROR(replicaSetWithPrimary, SType),
   exit(Pid, kill),
   State#topology_state{type = checkIfHasPrimary(Tab)};
 update_topology_state(
@@ -80,8 +92,9 @@ update_topology_state(
   set_possible_primary(Tab, Primary),
   State#topology_state{type = checkIfHasPrimary(Tab)};
 update_topology_state(
-    #mc_server{type = SType, pid = Pid},
-    State = #topology_state{type = replicaSetWithPrimary, servers = Tab}) when ?SEC_ARB_OTH(SType) ->
+    #mc_server{type = SType, pid = Pid, setName = SSetName},
+    State = #topology_state{type = replicaSetWithPrimary, servers = Tab, setName = TSetName}) when ?SEC_ARB_OTH(SType) ->
+  ?LOG_SET_NAME_ERROR(TSetName, SSetName),
   exit(Pid, kill),
   State#topology_state{type = checkIfHasPrimary(Tab)};
 update_topology_state(Server = #mc_server{type = rsPrimary, setName = SetName}, State = #topology_state{setName = SetName}) -> %% REPLICASETWITHPRIMARY
@@ -100,6 +113,7 @@ update_topology_state(
 update_topology_state(#mc_server{type = rsPrimary, pid = Pid, host = Host, setName = SSetName},
     State = #topology_state{setName = CSetName, servers = Tab}) when SSetName =/= CSetName ->
   ets:insert(Tab, #mc_server{pid = Pid, host = Host, type = deleted}),
+  ?LOG_SET_NAME_ERROR(CSetName, SSetName),
   exit(Pid, kill),
   State#topology_state{type = checkIfHasPrimary(Tab)};
 update_topology_state(_, State) ->
@@ -115,6 +129,68 @@ init_seeds([Addr | Seeds], Tab, Topts, Wopts) ->
   start_seed(Saved, Host, Tab, Topts, Wopts),
   init_seeds(Seeds, Tab, Topts, Wopts).
 
+validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
+  {ok, Conn} = mc_worker_api:connect(ConnectArgs),
+  {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
+  mc_worker_api:disconnect(Conn),
+  ServerType = server_type(IsMaster),
+  ServerSetName = maps:get(<<"setName">>, IsMaster, undefined),
+
+  case TopologyType of
+    unknown when ?SEC_ARB_OTH(ServerType) ->
+      ?LOG_TOPOLOGY_ERROR(unknown, ServerType),
+      {configured_mongo_type_mismatch, TopologyType, ServerType};
+
+    unknown when ServerType == standalone ->
+      ?LOG_TOPOLOGY_ERROR(unknown, ServerType),
+      {configured_mongo_type_mismatch, TopologyType, ServerType};
+
+    sharded when ?NON_SHARDED(ServerType) ->
+      ?LOG_TOPOLOGY_ERROR(sharded, ServerType),
+      {configured_mongo_type_mismatch, TopologyType, ServerType};
+
+    replicaSetNoPrimary when ?STAL_MONGS(ServerType) ->
+      ?LOG_TOPOLOGY_ERROR(replicaSetNoPrimary, ServerType),
+      {configured_mongo_type_mismatch, TopologyType, ServerType};
+
+    replicaSetNoPrimary when ?SEC_ARB_OTH(ServerType), ServerSetName /= TopologySetName, TopologySetName /= undefined ->
+      ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
+      {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
+
+    replicaSetWithPrimary when ?STAL_MONGS(ServerType) ->
+      ?LOG_TOPOLOGY_ERROR(replicaSetWithPrimary, ServerType),
+      {configured_mongo_type_mismatch, TopologyType, ServerType};
+
+    replicaSetWithPrimary when ?SEC_ARB_OTH(ServerType), ServerSetName /= TopologySetName ->
+      ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
+      {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
+
+    _ when ServerType == rsPrimary, ServerSetName /= TopologySetName ->
+      ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
+      {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
+
+    _ ->
+      ok
+  end.
+
+server_type(#{<<"ismaster">> := true, <<"secondary">> := false, <<"setName">> := _}) ->
+  rsPrimary;
+server_type(#{<<"ismaster">> := false, <<"secondary">> := true, <<"setName">> := _}) ->
+  rsSecondary;
+server_type(#{<<"arbiterOnly">> := true, <<"setName">> := _}) ->
+  rsArbiter;
+server_type(#{<<"hidden">> := true, <<"setName">> := _}) ->
+  rsOther;
+server_type(#{<<"setName">> := _}) ->
+  rsOther;
+server_type(#{<<"msg">> := <<"isdbgrid">>}) ->
+  mongos;
+server_type(#{<<"isreplicaset">> := true}) ->
+  rsGhost;
+server_type(#{<<"ok">> := _}) ->
+  unknown;
+server_type(_) ->
+  standalone.
 
 %% @private
 start_seed([], Host, Tab, Topts, Wopts) ->
@@ -145,16 +221,3 @@ checkIfHasPrimary_Res([]) ->
   replicaSetNoPrimary;
 checkIfHasPrimary_Res(_) ->
   replicaSetWithPrimary.
-
-%stop_servers_not_in_list(HostsList, Tab) ->
-%  ets:foldl(
-%    fun(E, Acc) ->
-%      case lists:member(E#mc_server.host, HostsList) of
-%        false ->
-%          ets:insert(Tab, E#mc_server{type = deleted}),
-%          unlink(E#mc_server.pid),
-%          exit(E#mc_server.pid, kill),
-%          [E#mc_server.host | Acc];
-%        true -> Acc
-%      end
-%    end, [], Tab).

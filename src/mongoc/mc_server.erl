@@ -57,7 +57,7 @@ start(Topology, HostPort, Topts, Wopts) ->
 
 init([Topology, Addr, TopologyOptions, Wopts]) ->
   process_flag(trap_exit, true),
-  {Host, Port} = parse_seed(Addr),
+  {Host, Port} = mc_util:parse_seed(Addr),
   PoolConf = form_pool_conf(TopologyOptions),
   ConnectTimeoutMS = mc_utils:get_value(connectTimeoutMS, TopologyOptions, 20000),
   SocketTimeoutMS = mc_utils:get_value(socketTimeoutMS, TopologyOptions, 100),
@@ -172,17 +172,6 @@ init_pool(#state{host = Host, port = Port, pool_conf = Conf, worker_opts = Wopts
   {ok, Child} = poolboy:start_link(PoolArgs, WO),
   link(Child),
   Child.
-
-%% @private
-parse_seed(Addr) when is_binary(Addr) ->
-  parse_seed(binary_to_list(Addr));
-parse_seed(Addr) when is_list(Addr) ->
-  [Host0, Port] = string:split(Addr, ":", trailing),
-  Host = case inet:parse_address(Host0) of
-             {ok, H} -> H;
-             _ -> Host0
-         end,
-  {Host, list_to_integer(Port)}.
 
 %% @private
 form_pool_conf(TopologyOptions) ->
