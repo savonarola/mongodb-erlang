@@ -56,7 +56,22 @@ init([SeedsList, TopologyOptions, WorkerOptions]) ->
     get_pool_timeout = GetPoolTimeout
   },
   gen_server:cast(self(), init_seeds),
-  {ok, State}.
+  {Host, Port} = 
+    case Seeds of
+      [Seed|_] ->
+        mc_util:parse_seed(Seed);
+      Seed ->
+        mc_util:parse_seed(Seed)
+    end,
+  ConnectTimeoutMS = proplists:get_value(connectTimeoutMS, TopologyOptions, 20000),
+  ConnectArgs = mc_util:form_connect_args(Host, Port, ConnectTimeoutMS, WorkerOptions),
+  case mc_topology_logics:validate_server_and_config(ConnectArgs, Type, SetName) of
+    ok ->
+      {ok, State};
+
+    Error ->
+      {stop, Error}
+  end.
 
 -spec(terminate(Reason :: (normal | shutdown | {shutdown, term()} | term()),
     State :: #topology_state{}) -> term()).
@@ -159,11 +174,14 @@ handle_cast(update_topology, State = #topology_state{servers = Tab}) ->
 handle_cast(_Request, State) ->
   {noreply, State}.
 
-handle_info({'DOWN', MRef, _, _, _}, State = #topology_state{topology_opts = Topts, worker_opts = Wopts, servers = Tab}) ->
+handle_info(init_seeds, State) ->
+  mc_topology_logics:init_seeds(State),
+  {noreply, State};
+handle_info({'DOWN', MRef, _, _, _}, State = #topology_state{servers = Tab}) ->
   case ets:match(Tab, #mc_server{pid = '$1', host = '$2', mref = MRef, _ = '_'}) of
-    [[Pid, Host]] ->
+    [[Pid, _Host]] ->
       true = ets:delete(Tab, Pid),
-      mc_topology_logics:init_seeds([Host], Tab, Topts, Wopts),
+      erlang:send_after(1000, self(), init_seeds),
       {noreply, State};
     [] ->
       {noreply, State}
@@ -199,7 +217,7 @@ handle_server_to_unknown(Server, #topology_state{servers = Tab} = State) ->
 
 %% @private
 parse_ismaster(Server, IsMaster, RTT, State = #topology_state{servers = Tab}) ->
-  SType = server_type(IsMaster),
+  SType = mc_topology_logics:server_type(IsMaster),
   [Saved] = ets:select(Tab, [{#mc_server{pid = Server, _ = '_'}, [], ['$_']}]),
   {OldRTT, NRTT} = parse_rtt(Saved#mc_server.old_rtt, Saved#mc_server.rtt, RTT),
   ToUpdate = Saved#mc_server{
@@ -229,26 +247,6 @@ parse_rtt(_, undefined, RTT) -> {RTT, RTT};
 parse_rtt(OldRTT, CurRTT, RTT) ->
   A = 0.2,
   {CurRTT, A * RTT + (1 - A) * OldRTT / 1000}.
-
-%% @private
-server_type(#{<<"ismaster">> := true, <<"secondary">> := false, <<"setName">> := _}) ->
-  rsPrimary;
-server_type(#{<<"ismaster">> := false, <<"secondary">> := true, <<"setName">> := _}) ->
-  rsSecondary;
-server_type(#{<<"arbiterOnly">> := true, <<"setName">> := _}) ->
-  rsArbiter;
-server_type(#{<<"hidden">> := true, <<"setName">> := _}) ->
-  rsOther;
-server_type(#{<<"setName">> := _}) ->
-  rsOther;
-server_type(#{<<"msg">> := <<"isdbgrid">>}) ->
-  mongos;
-server_type(#{<<"isreplicaset">> := true}) ->
-  rsGhost;
-server_type(#{<<"ok">> := _}) ->
-  unknown;
-server_type(_) ->
-  standalone.
 
 %% @private
 drop_server(Topology, Server) ->

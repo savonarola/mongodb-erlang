@@ -1,13 +1,35 @@
 %% -*- mode: erlang -*-
-{"3.0.11",
+{"3.0.12",
  [
-  {"3.0.10", []},
+  {"3.0.11", [
+    {add_module, mc_util},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
+  ]},
+  {"3.0.10", [
+    {add_module, mc_util},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
+  ]},
   {"3.0.9", [
-    {load_module, mc_worker_logic, brutal_purge, soft_purge, []}
+    {add_module, mc_util},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {"3.0.8", [
+    {add_module, mc_util},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
-    {load_module, mc_monitor, brutal_purge, soft_purge, []}
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {<<"3.0.[0-7]">>, [
     {restart_application, mongodb}
@@ -15,13 +37,35 @@
   {<<".*">>, []}
  ],
  [
-  {"3.0.10", []},
+  {"3.0.11", [
+    {delete_module, mc_util},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
+  ]},
+  {"3.0.10", [
+    {delete_module, mc_util},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
+  ]},
   {"3.0.9", [
-    {load_module, mc_worker_logic, brutal_purge, soft_purge, []}
+    {delete_module, mc_util},
+    {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {"3.0.8", [
+    {delete_module, mc_util},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
-    {load_module, mc_monitor, brutal_purge, soft_purge, []}
+    {load_module, mc_monitor, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {<<"3.0.[0-7]">>, [
     {restart_application, mongodb}

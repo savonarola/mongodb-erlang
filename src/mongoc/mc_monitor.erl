@@ -122,7 +122,7 @@ next_loop(Pid) ->
 %% @private
 loop(State = #state{type = Type, host = Host, port = Port, topology = Topology, server = Server,
   connect_to = Timeout, heartbeatF = HB_MS, minHeartbeatF = MinHB_MS, counter = Counter, worker_opts = WOpts}) ->
-  ConnectArgs = form_args(Host, Port, Timeout, WOpts),
+  ConnectArgs = mc_util:form_connect_args(Host, Port, Timeout, WOpts),
   try check(ConnectArgs, Server) of
     Res ->
       gen_server:cast(Topology, Res),
@@ -172,11 +172,3 @@ do_timeout(Pid, _TO) ->
 %% @private
 send_stop(undefined) -> ok;
 send_stop(PausePid) -> PausePid ! stop.
-
-%% @private
-form_args(Host, Port, Timeout, WorkerArgs) ->
-  case mc_utils:get_value(ssl, WorkerArgs, false) of
-    true -> [{host, Host}, {port, Port}, {timeout, Timeout}, {ssl, true},
-      {ssl_opts, mc_utils:get_value(ssl_opts, WorkerArgs, [])}];
-    false -> [{host, Host}, {port, Port}, {timeout, Timeout}]
-  end.
