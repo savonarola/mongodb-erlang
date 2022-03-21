@@ -12,11 +12,11 @@
 -include("mongoc.hrl").
 
 -define(NON_SHARDED(ST),
-  ST =:= standalone; ST =:= rsPrimary; ST =:= rsSecondary; ST =:= rsArbiter; ST =:= rsOther; ST =:= rsGhost).
--define(SEC_ARB_OTH(ST), ST =:= rsSecondary; ST =:= rsArbiter; ST =:= rsOther).
--define(STAL_MONGS(ST), ST =:= standalone; ST =:= mongos).
--define(UNKN_GHST(ST), ST =:= unknown; ST =:= rsGhost).
--define(NOT_MAX(E, M), E =/= undefined, M =/= undefined, E < M).
+  (ST =:= standalone orelse ST =:= rsPrimary orelse ST =:= rsSecondary orelse ST =:= rsArbiter orelse ST =:= rsOther orelse ST =:= rsGhost)).
+-define(SEC_ARB_OTH(ST), (ST =:= rsSecondary orelse ST =:= rsArbiter orelse ST =:= rsOther)).
+-define(STAL_MONGS(ST), (ST =:= standalone orelse ST =:= mongos)).
+-define(UNKN_GHST(ST), (ST =:= unknown orelse ST =:= rsGhost)).
+-define(NOT_MAX(E, M), (E =/= undefined andalso M =/= undefined andalso E < M)).
 
 -define(LOG_TOPOLOGY_ERROR(Configured, Actual),
   logger:error("Configured mongo client topology does not match actual mongo install topology. Configured: ~p; Actual: ~p", [Configured, Actual])).
@@ -153,7 +153,7 @@ validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
       ?LOG_TOPOLOGY_ERROR(replicaSetNoPrimary, ServerType),
       {configured_mongo_type_mismatch, TopologyType, ServerType};
 
-    replicaSetNoPrimary when ?SEC_ARB_OTH(ServerType), ServerSetName /= TopologySetName, TopologySetName /= undefined ->
+    replicaSetNoPrimary when ?SEC_ARB_OTH(ServerType) andalso ServerSetName /= TopologySetName andalso TopologySetName /= undefined ->
       ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
       {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
 
@@ -161,11 +161,11 @@ validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
       ?LOG_TOPOLOGY_ERROR(replicaSetWithPrimary, ServerType),
       {configured_mongo_type_mismatch, TopologyType, ServerType};
 
-    replicaSetWithPrimary when ?SEC_ARB_OTH(ServerType), ServerSetName /= TopologySetName ->
+    replicaSetWithPrimary when ?SEC_ARB_OTH(ServerType) andalso ServerSetName /= TopologySetName ->
       ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
       {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
 
-    _ when ServerType == rsPrimary, ServerSetName /= TopologySetName ->
+    _ when ServerType == rsPrimary andalso ServerSetName /= TopologySetName ->
       ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
       {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
 
