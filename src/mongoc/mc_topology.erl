@@ -115,7 +115,7 @@ get_pool(Topology, Options) ->
 get_pool(RPMode, RPTags, State) ->
   TO = State#topology_state.topology_opts,
   ServerSelectionTimeoutMS = mc_utils:get_value(serverSelectionTimeoutMS, TO, 30000),
-  Pid = spawn(?MODULE, get_pool, [self(), State, RPMode, RPTags]),
+  Pid = proc_lib:spawn_link(?MODULE, get_pool, [self(), State, RPMode, RPTags]),
   receive
     {Pid, {error, Reason}, _} ->
       {error, Reason};
