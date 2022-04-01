@@ -13,7 +13,7 @@
 -include("mongoc.hrl").
 
 %% API
--export([start_link/3, drop_server/2, update_topology/1, get_state/1, get_pool/2, get_pool/4, get_pool/1, disconnect/1, get_state_part/1]).
+-export([start_link/3, drop_server/2, update_topology/1, get_state/1, get_pool/2, get_pool/5, get_pool/1, disconnect/1, get_state_part/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
@@ -115,7 +115,8 @@ get_pool(Topology, Options) ->
 get_pool(RPMode, RPTags, State) ->
   TO = State#topology_state.topology_opts,
   ServerSelectionTimeoutMS = mc_utils:get_value(serverSelectionTimeoutMS, TO, 30000),
-  Pid = proc_lib:spawn_link(?MODULE, get_pool, [self(), State, RPMode, RPTags]),
+  Caller = self(),
+  Pid = spawn(?MODULE, get_pool, [self(), State, RPMode, RPTags, Caller]),
   receive
     {Pid, {error, Reason}, _} ->
       {error, Reason};
@@ -128,14 +129,18 @@ get_pool(RPMode, RPTags, State) ->
       {error, timeout}
   end.
 
-get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags) ->
-  case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
-    #mc_server{pid = Pid, type = Type} ->
-      Pool = mc_server:get_pool(Pid, TM),
-      From ! {self(), Pool, Type};
-    undefined ->
-      timer:sleep(100),
-      get_pool(From, State, RPMode, Tags)
+get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags, Caller) ->
+  case is_process_alive(Caller) of
+      false -> ok;
+      true ->
+          case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
+            #mc_server{pid = Pid, type = Type} ->
+              Pool = mc_server:get_pool(Pid, TM),
+              From ! {self(), Pool, Type};
+            undefined ->
+              timer:sleep(100),
+              get_pool(From, State, RPMode, Tags, Caller)
+          end
   end.
 
 
