@@ -130,27 +130,27 @@ get_pool(RPMode, RPTags, State) ->
   end.
 
 get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags) ->
-    case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
-        #mc_server{pid = Pid, type = Type} ->
-            Pool = mc_server:get_pool(Pid, TM),
-            From ! {self(), Pool, Type};
-        undefined ->
-            timer:sleep(100),
-            get_pool(From, State, RPMode, Tags)
-    end.
+  case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
+    #mc_server{pid = Pid, type = Type} ->
+      Pool = mc_server:get_pool(Pid, TM),
+      From ! {self(), Pool, Type};
+    undefined ->
+      timer:sleep(100),
+      get_pool(From, State, RPMode, Tags)
+  end.
 
 get_pool(From, #topology_state{self = Topology, get_pool_timeout = TM} = State, RPMode, Tags, Caller) ->
   case is_process_alive(Caller) of
-      false -> ok;
-      true ->
-          case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
-            #mc_server{pid = Pid, type = Type} ->
-              Pool = mc_server:get_pool(Pid, TM),
-              From ! {self(), Pool, Type};
-            undefined ->
-              timer:sleep(100),
-              get_pool(From, State, RPMode, Tags, Caller)
-          end
+    false -> ok;
+    true ->
+      case mc_selecting_logics:select_server(Topology, RPMode, Tags) of
+        #mc_server{pid = Pid, type = Type} ->
+          Pool = mc_server:get_pool(Pid, TM),
+          From ! {self(), Pool, Type};
+        undefined ->
+          timer:sleep(100),
+          get_pool(From, State, RPMode, Tags, Caller)
+      end
   end.
 
 
