@@ -16,13 +16,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-
 form_connect_args(Host, Port, Timeout, WorkerArgs) ->
-  case mc_utils:get_value(ssl, WorkerArgs, false) of
-    true -> [{host, Host}, {port, Port}, {timeout, Timeout}, {ssl, true},
-      {ssl_opts, mc_utils:get_value(ssl_opts, WorkerArgs, [])}];
-    false -> [{host, Host}, {port, Port}, {timeout, Timeout}]
-  end.
+  [{host, Host}, {port, Port}, {timeout, Timeout} | WorkerArgs].
 
 parse_seed(Addr) when is_binary(Addr) ->
   parse_seed(binary_to_list(Addr));

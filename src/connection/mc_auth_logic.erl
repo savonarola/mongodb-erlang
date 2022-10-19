@@ -41,8 +41,8 @@ mongodb_cr_auth(Socket, Database, Login, Password, SetOpts) ->
   {true, Res} = mc_worker_api:sync_command(Socket, Database, {<<"getnonce">>, 1}, SetOpts),
   Nonce = maps:get(<<"nonce">>, Res),
   case mc_worker_api:sync_command(Socket, Database, ?AUTH_CMD(Login, Nonce, Password), SetOpts) of
-    {true, _} -> true;
-    {false, Reason} -> erlang:error(Reason)
+    {true, _} -> ok;
+    {false, Reason} -> {error, Reason}
   end.
 
 %% @private
@@ -52,7 +52,7 @@ scram_sha_1_auth(Socket, Database, Login, Password, SetOpts) ->
     scram_first_step(Socket, Database, Login, Password, SetOpts)
   catch
     Error:Reason:StackTrace ->
-      erlang:error({<<"Can't pass authentification">>, Error, Reason, StackTrace})
+      erlang:raise(Error, {cannot_pass_auth, Reason}, StackTrace)
   end.
 
 %% @private
@@ -60,19 +60,27 @@ scram_first_step(Socket, Database, Login, Password, SetOpts) ->
   RandomBString = mc_utils:random_binary(?RANDOM_LENGTH),
   FirstMessage = compose_first_message(Login, RandomBString),
   Message = base64:encode(<<?GS2_HEADER/binary, FirstMessage/binary>>),
-  {true, Res} = mc_worker_api:sync_command(Socket, Database,
-    {<<"saslStart">>, 1, <<"mechanism">>, <<"SCRAM-SHA-1">>, <<"autoAuthorize">>, 1, <<"payload">>, Message}, SetOpts),
-  ConversationId = maps:get(<<"conversationId">>, Res, {}),
-  Payload = maps:get(<<"payload">>, Res),
-  scram_second_step(Socket, Database, Login, Password, Payload, ConversationId, RandomBString, FirstMessage, SetOpts).
+  SASLStart = {<<"saslStart">>, 1, <<"mechanism">>, <<"SCRAM-SHA-1">>, <<"autoAuthorize">>, 1, <<"payload">>, Message},
+  case mc_worker_api:sync_command(Socket, Database, SASLStart, SetOpts) of
+      {true, Res} ->
+        ConversationId = maps:get(<<"conversationId">>, Res, {}),
+        Payload = maps:get(<<"payload">>, Res),
+        scram_second_step(Socket, Database, Login, Password, Payload, ConversationId, RandomBString, FirstMessage, SetOpts);
+      {false, Details} ->
+        {error, {'saslStart', Details}}
+  end.
 
 %% @private
 scram_second_step(Socket, Database, Login, Password, Payload, ConversationId, RandomBString, FirstMessage, SetOpts) ->
   Decoded = base64:decode(Payload),
   {Signature, ClientFinalMessage} = compose_second_message(Decoded, Login, Password, RandomBString, FirstMessage),
-  {true, Res} = mc_worker_api:sync_command(Socket, Database, {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId,
-    <<"payload">>, base64:encode(ClientFinalMessage)}, SetOpts),
-  scram_third_step(base64:encode(Signature), Res, ConversationId, Socket, Database, SetOpts).
+  SASLContinue = {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId, <<"payload">>, base64:encode(ClientFinalMessage)},
+  case mc_worker_api:sync_command(Socket, Database, SASLContinue, SetOpts) of
+    {true, Res} ->
+      scram_third_step(base64:encode(Signature), Res, ConversationId, Socket, Database, SetOpts);
+    {false, Details} ->
+      {error, {'saslContinue', Details}}
+  end.
 
 %% @private
 scram_third_step(ServerSignature, Response, ConversationId, Socket, Database, SetOpts) ->
@@ -85,9 +93,15 @@ scram_third_step(ServerSignature, Response, ConversationId, Socket, Database, Se
 %% @private
 scram_forth_step(true, _, _, _, _) -> true;
 scram_forth_step(false, ConversationId, Socket, Database, SetOpts) ->
-  {true, Res} = mc_worker_api:sync_command(Socket, Database, {<<"saslContinue">>, 1, <<"conversationId">>,
-    ConversationId, <<"payload">>, <<>>}, SetOpts),
-  true = maps:get(<<"done">>, Res, false).
+  SASLContinue = {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId, <<"payload">>, <<>>},
+  case mc_worker_api:sync_command(Socket, Database, SASLContinue, SetOpts) of
+      {true, #{<<"done">> := true}} ->
+        ok;
+      {true, Res} ->
+        {error, {'final_saslContinue_not_done', Res}};
+      {false, Details} ->
+        {error, {'final_saslContinue', Details}}
+  end.
 
 %% @private
 compose_first_message(Login, RandomBString) ->
