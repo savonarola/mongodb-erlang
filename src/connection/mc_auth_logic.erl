@@ -28,7 +28,7 @@
 -export([auth/6]).
 
 %% Authorize on database synchronously
--spec auth(float(), port(), database(), binary() | undefined, binary() | undefined, module()) -> boolean().
+-spec auth(float(), port(), database(), binary() | undefined, binary() | undefined, module()) -> ok | {error, term()}.
 auth(Version, Socket, Database, Login, Password, NetModule) when Version > 2.7 ->  %new authorisation
   scram_sha_1_auth(Socket, Database, Login, Password, NetModule);
 auth(_, Socket, Database, Login, Password, NetModule) ->   %old authorisation

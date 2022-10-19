@@ -1,10 +1,20 @@
 %% -*- mode: erlang -*-
-{"3.0.13",
- [{"3.0.12", [
+{"3.0.14",
+ [{"3.0.13", [
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []}
+  ]},
+  {"3.0.12", [
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []}
   ]},
   {"3.0.11", [
     {add_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []},
@@ -12,6 +22,8 @@
   ]},
   {"3.0.10", [
     {add_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []},
@@ -19,6 +31,8 @@
   ]},
   {"3.0.9", [
     {add_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
@@ -27,6 +41,8 @@
   ]},
   {"3.0.8", [
     {add_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
@@ -38,12 +54,21 @@
   ]},
   {<<".*">>, []}
  ],
- [
+ [{"3.0.13", [
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []}
+  ]},
   {"3.0.12", [
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []}
   ]},
   {"3.0.11", [
     {delete_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []},
@@ -51,6 +76,8 @@
   ]},
   {"3.0.10", [
     {delete_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []},
@@ -58,6 +85,8 @@
   ]},
   {"3.0.9", [
     {delete_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
@@ -66,6 +95,8 @@
   ]},
   {"3.0.8", [
     {delete_module, mc_util},
+    {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
     {load_module, mc_worker_logic, brutal_purge, soft_purge, []},
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
