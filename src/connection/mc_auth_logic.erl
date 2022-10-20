@@ -36,7 +36,7 @@ auth(_, Socket, Database, Login, Password, NetModule) ->   %old authorisation
 
 
 %% @private
--spec mongodb_cr_auth(port(), binary(), binary(), binary(), module()) -> boolean().
+-spec mongodb_cr_auth(port(), database(), binary(), binary(), module()) -> ok | {error, term()}.
 mongodb_cr_auth(Socket, Database, Login, Password, SetOpts) ->
   {true, Res} = mc_worker_api:sync_command(Socket, Database, {<<"getnonce">>, 1}, SetOpts),
   Nonce = maps:get(<<"nonce">>, Res),
@@ -46,7 +46,7 @@ mongodb_cr_auth(Socket, Database, Login, Password, SetOpts) ->
   end.
 
 %% @private
--spec scram_sha_1_auth(port(), binary(), binary(), binary(), module()) -> boolean().
+-spec scram_sha_1_auth(port(), binary(), binary(), binary(), module()) -> ok | {error, term()}.
 scram_sha_1_auth(Socket, Database, Login, Password, SetOpts) ->
   try
     scram_first_step(Socket, Database, Login, Password, SetOpts)
@@ -91,7 +91,7 @@ scram_third_step(ServerSignature, Response, ConversationId, Socket, Database, Se
   scram_forth_step(Done, ConversationId, Socket, Database, SetOpts).
 
 %% @private
-scram_forth_step(true, _, _, _, _) -> true;
+scram_forth_step(true, _, _, _, _) -> ok;
 scram_forth_step(false, ConversationId, Socket, Database, SetOpts) ->
   SASLContinue = {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId, <<"payload">>, <<>>},
   case mc_worker_api:sync_command(Socket, Database, SASLContinue, SetOpts) of
