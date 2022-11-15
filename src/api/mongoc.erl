@@ -80,7 +80,7 @@ transaction_query(Topology, Transaction) ->
 transaction_query(Topology, Transaction, Options) ->
   transaction_query(Topology, Transaction, Options, ?TRANSACTION_TIMEOUT).
 
--spec transaction_query(pid() | atom(), fun(), map(), integer() | infinity) -> any().
+-spec transaction_query(pid() | atom(), fun(), map(), timeout()) -> any().
 transaction_query(Topology, Transaction, Options, Timeout) ->
   case mc_topology:get_pool(Topology, Options) of
     {ok, Pool = #{pool := C}} ->
