@@ -20,7 +20,9 @@
   connect/4,
   insert/3,
   find/4, find/6,
-  find_one/5, find_one/4,
+  find_one/4,
+  find_one/5,
+  find_one/6,
   update/5,
   delete/3,
   count/4,
@@ -83,11 +85,16 @@ find_one(Topology, Collection, Selector, Projector) ->
 -spec find_one(atom() | pid(), collection(), selector(), projector(), integer()) ->
   transaction_result(map() | undefined).
 find_one(Topology, Collection, Selector, Projector, Skip) ->
+  find_one(Topology, Collection, Selector, Projector, Skip, ?TRANSACTION_TIMEOUT).
+
+-spec find_one(atom() | pid(), collection(), selector(), projector(), integer(), timeout()) ->
+  transaction_result(map() | undefined).
+find_one(Topology, Collection, Selector, Projector, Skip, Timeout) ->
   mongoc:transaction_query(Topology,
     fun(Conf = #{pool := Worker}) ->
       Query = mongoc:find_one_query(Conf, Collection, Selector, Projector, Skip),
       mc_worker_api:find_one(Worker, Query)
-    end, #{}).
+    end, #{}, Timeout).
 
 -spec count(atom() | pid(), collection(), selector(), integer()) ->
     transaction_result(integer()).
