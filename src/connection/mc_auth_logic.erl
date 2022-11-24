@@ -12,6 +12,7 @@
 -include("mongo_protocol.hrl").
 
 -ifdef(TEST).
+-compile(nowarn_export_all).
 -compile(export_all).
 -endif.
 

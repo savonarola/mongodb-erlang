@@ -5,6 +5,7 @@
 
 -define(WRITE(Req), is_record(Req, insert); is_record(Req, update); is_record(Req, delete)).
 -define(READ(Req), is_record(Request, 'query'); is_record(Request, getmore)).
+-define(OP_MSG(Req), is_record(Request, 'op_msg_command'); is_record(Request, 'op_msg_write_op')).
 
 -export([start_link/1, disconnect/1, hibernate/1]).
 -export([
@@ -20,7 +21,7 @@
   request_storage = #{} :: map(),
   buffer = <<>> :: binary(),
   conn_state :: conn_state(),
-  hibernate_timer :: timer:tref() | undefined,
+  hibernate_timer :: timer:tref() | reference() | undefined,
   next_req_fun :: fun(),
   net_module :: ssl | gen_tcp
 }).
@@ -78,6 +79,8 @@ handle_call(#ensure_index{collection = Coll, index_spec = IndexSpec}, _, State) 
       ConnState#conn_state.database,
       #insert{collection = mc_worker_logic:update_dbcoll(Coll, <<"system.indexes">>), documents = [Index]}),
   {reply, ok, State};
+handle_call(Request, From, State) when ?OP_MSG(Request) ->  % MongoDB OpMsg request 
+  process_op_msg_request(Request, From, State);
 handle_call(Request, From, State) when ?WRITE(Request) ->  % write requests (deprecated)
   process_write_request(Request, From, State);
 handle_call(Request, From, State) when ?READ(Request) -> % read requests (and all through command)
@@ -130,6 +133,39 @@ do_maybe_reply_parent(undefined, _Response) ->
   ok;
 do_maybe_reply_parent(Parent, Response) ->
   Parent ! {mc_worker_reply, Response}.
+
+process_op_msg_request(Request, From, State) ->
+    #state{socket = Socket,
+           request_storage = RequestStorage,
+           conn_state = CS,
+           net_module = NetModule,
+           next_req_fun = Next} = State,
+    Database = CS#conn_state.database,
+    {ok, PacketSize, Id} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
+    UState = need_hibernate(PacketSize, State),
+    case get_op_msg_write_concern(Request) of
+        {_, {<<"w">>, 0}} -> %no concern request
+            Next(),
+            {reply,
+             #op_msg_response{response_doc = #{<<"ok">> => 1.0}},
+             UState};
+        _ ->  %ordinary request with response
+            Next(),
+            RespFun = mc_worker_logic:get_resp_fun(Request, From),  % save function, which will be called on response
+            URStorage = RequestStorage#{Id => RespFun},
+            {noreply, UState#state{request_storage = URStorage}}
+    end.
+
+get_op_msg_write_concern(#op_msg_write_op{extra_fields = ExtraFields}) ->
+    case lists:keyfind(<<"writeConcern">>, 1, ExtraFields) of
+        {_, WC} -> WC;
+        _ -> not_found
+    end;
+get_op_msg_write_concern(#op_msg_command{command_doc = DocList}) ->
+    case lists:keyfind(<<"writeConcern">>, 1, DocList) of
+        {_, WC} -> WC;
+        _ -> not_found
+    end.
 
 %% @private
 process_read_request(Request, From, State) ->

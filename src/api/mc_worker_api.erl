@@ -67,9 +67,24 @@ insert(Connection, Coll, Docs) ->
 insert(Connection, Coll, Doc, WC) when is_tuple(Doc); is_map(Doc) ->
   {Res, [UDoc | _]} = insert(Connection, Coll, [Doc], WC),
   {Res, UDoc};
-insert(Connection, Coll, Docs, WC) ->
+insert(Connection, Coll, Docs, WriteConcern) ->
   Converted = prepare(Docs, fun assign_id/1),
-  {command(Connection, {<<"insert">>, Coll, <<"documents">>, Converted, <<"writeConcern">>, WC}), Converted}.
+  case mc_utils:use_legacy_protocol() of
+      true -> 
+          {command(Connection, 
+                   {<<"insert">>, Coll,
+                    <<"documents">>, Converted,
+                    <<"writeConcern">>, WriteConcern}),
+           Converted};
+      false -> 
+          Msg = #op_msg_write_op{command = insert,
+                                 collection = Coll,
+                                 extra_fields = [{<<"writeConcern">>, WriteConcern}],
+                                 documents = Converted},
+          {mc_connection_man:op_msg(Connection, Msg), Converted}
+  end.
+
+
 
 %% @doc Replace the document matching criteria entirely with the new Document.
 -spec update(pid(), collection(), selector(), map()) -> {boolean(), map()}.
@@ -79,17 +94,31 @@ update(Connection, Coll, Selector, Doc) ->
 %% @doc Replace the document matching criteria entirely with the new Document.
 -spec update(pid(), collection(), selector(), map(), boolean(), boolean()) -> {boolean(), map()}.
 update(Connection, Coll, Selector, Doc, Upsert, MultiUpdate) ->
-  Converted = prepare(Doc, fun(D) -> D end),
-  command(Connection, {<<"update">>, Coll, <<"updates">>,
-    [#{<<"q">> => Selector, <<"u">> => Converted, <<"upsert">> => Upsert, <<"multi">> => MultiUpdate}]}).
+  update(Connection, Coll, Selector, Doc, Upsert, MultiUpdate, {<<"w">>, 1}).
 
 %% @doc Replace the document matching criteria entirely with the new Document.
 -spec update(pid(), collection(), selector(), map(), boolean(), boolean(), bson:document()) -> {boolean(), map()}.
 update(Connection, Coll, Selector, Doc, Upsert, MultiUpdate, WC) ->
   Converted = prepare(Doc, fun(D) -> D end),
-  command(Connection, {<<"update">>, Coll, <<"updates">>,
-    [#{<<"q">> => Selector, <<"u">> => Converted, <<"upsert">> => Upsert, <<"multi">> => MultiUpdate}],
-    <<"writeConcern">>, WC}).
+  case mc_utils:use_legacy_protocol() of
+      true -> 
+          command(Connection, {<<"update">>, Coll, <<"updates">>,
+                               [#{<<"q">> => Selector,
+                                  <<"u">> => Converted,
+                                  <<"upsert">> => Upsert,
+                                  <<"multi">> => MultiUpdate}],
+                               <<"writeConcern">>, WC});
+      false -> 
+          Msg = #op_msg_write_op{command = update,
+                                 collection = Coll,
+                                 extra_fields = [{<<"writeConcern">>, WC}],
+                                 documents_name = <<"updates">>,
+                                 documents = [#{<<"q">> => Selector,
+                                                <<"u">> => Converted,
+                                                <<"upsert">> => Upsert,
+                                                <<"multi">> => MultiUpdate}]},
+          mc_connection_man:op_msg(Connection, Msg)
+  end.
 
 %% @doc Delete selected documents
 -spec delete(pid(), collection(), selector()) -> {boolean(), map()}.
@@ -104,8 +133,21 @@ delete_one(Connection, Coll, Selector) ->
 %% @doc Delete selected documents
 -spec delete_limit(pid(), collection(), selector(), integer()) -> {boolean(), map()}.
 delete_limit(Connection, Coll, Selector, N) ->
-  command(Connection, {<<"delete">>, Coll, <<"deletes">>,
-    [#{<<"q">> => Selector, <<"limit">> => N}]}).
+  case mc_utils:use_legacy_protocol() of
+      true -> 
+          command(Connection, {<<"delete">>, Coll, <<"deletes">>,
+                               [#{<<"q">> => Selector, <<"limit">> => N}]});
+      false -> 
+          Msg = #op_msg_write_op{command = delete,
+                                 collection = Coll,
+                                 extra_fields = [{<<"writeConcern">>, {<<"w">>, 1}}],
+                                 documents_name = <<"deletes">>,
+                                 documents = [#{<<"q">> => Selector,
+                                                <<"limit">> => 1}]},
+          mc_connection_man:op_msg(Connection, Msg)
+  end.
+
+
 
 %% @doc Delete selected documents
 -spec delete_limit(pid(), collection(), selector(), integer(), bson:document()) -> {boolean(), map()}.
@@ -121,20 +163,52 @@ find_one(Connection, Coll, Selector) ->
 %% @doc Return first selected document, if any
 -spec find_one(pid(), colldb(), selector(), map()) -> map() | undefined.
 find_one(Connection, Coll, Selector, Args) ->
-  Projector = maps:get(projector, Args, #{}),
-  Skip = maps:get(skip, Args, 0),
-  ReadPref = maps:get(readopts, Args, #{<<"mode">> => <<"primary">>}),
-  find_one(Connection,
-    #'query'{
-      collection = Coll,
-      selector = mongoc:append_read_preference(Selector, ReadPref),
-      projector = Projector,
-      skip = Skip
-    }).
+      Projector = maps:get(projector, Args, #{}),
+      Skip = maps:get(skip, Args, 0),
+      ReadPref = maps:get(readopts, Args, #{<<"mode">> => <<"primary">>}),
+      case mc_utils:use_legacy_protocol() of
+          true -> 
+              SelectorWithReadPref = mongoc:append_read_preference(Selector, ReadPref),
+              find_one(Connection,
+                       #'query'{
+                          collection = Coll,
+                          selector = SelectorWithReadPref,
+                          projector = Projector,
+                          skip = Skip
+                         });
+          false -> 
+              CommandDoc = [
+                                {<<"find">>, Coll},
+                                {<<"$readPreference">>, ReadPref},
+                                {<<"filter">>, Selector},
+                                {<<"projection">>, Projector},
+                                {<<"skip">>, Skip},
+                                {<<"batchSize">>, 1},
+                                {<<"limit">>, 1},
+                                {<<"singleBatch">>, true} %% Close cursor after first batch
+                                        
+                           ],
+              mc_connection_man:op_msg_read_one(Connection,
+                                                #'op_msg_command'{
+                                                   command_doc = CommandDoc
+                                                  })
+      end.
 
 -spec find_one(pid() | atom(), query()) -> map() | undefined.
 find_one(Connection, Query) when is_record(Query, query) ->
-  mc_connection_man:read_one(Connection, Query).
+    case mc_utils:use_legacy_protocol() of
+        true -> mc_connection_man:read_one(Connection, Query);
+        false ->
+            #'query'{collection = Coll,
+                     skip = Skip,
+                     selector = Selector,
+                     projector = Projector} = Query,
+            {RP, NewSelector, _} = mongoc:extract_read_preference(Selector),
+            Args = #{projector => Projector,
+                     skip => Skip,
+                     readopts => RP},
+            find_one(Connection, Coll, NewSelector, Args)
+    end.
 
 %% @doc Return selected documents.
 -spec find(pid(), colldb(), selector()) -> {ok, cursor()} | [].
@@ -147,7 +221,13 @@ find(Connection, Coll, Selector) ->
 find(Connection, Coll, Selector, Args) ->
   Projector = maps:get(projector, Args, #{}),
   Skip = maps:get(skip, Args, 0),
-  BatchSize = maps:get(batchsize, Args, 0),
+  BatchSize = 
+        case mc_utils:use_legacy_protocol() of
+            true ->
+                maps:get(batchsize, Args, 0);
+            false ->
+                maps:get(batchsize, Args, 101)
+        end,
   ReadPref = maps:get(readopts, Args, #{<<"mode">> => <<"primary">>}),
   find(Connection,
     #'query'{
@@ -162,7 +242,49 @@ find(Connection, Coll, Selector, Args) ->
 
 -spec find(pid() | atom(), query()) -> {ok, cursor()} | [].
 find(Connection, Query) when is_record(Query, query) ->
-  case mc_connection_man:read(Connection, Query) of
+    FixedQuery =
+        case mc_utils:use_legacy_protocol() of
+            true -> Query;
+            false ->
+                #'query'{collection = Coll,
+                         skip = Skip,
+                         selector = Selector,
+                         batchsize = BatchSize,
+                         projector = Projector} = Query,
+                {ReadPref, NewSelector, OrderBy} = mongoc:extract_read_preference(Selector),
+                %% We might need to do some transformations:
+                %% See: https://github.com/mongodb/specifications/blob/master/source/find_getmore_killcursors_commands.rst#mapping-op-query-behavior-to-the-find-command-limit-and-batchsize-fields
+                SingleBatch = BatchSize < 0,
+                BatchSize2 = erlang:abs(BatchSize),
+                BatchSizeField =
+                    case BatchSize2 =:= 0 of
+                        true -> [];
+                        false -> [{<<"batchSize">>, BatchSize2}] 
+                    end,
+                SingleBatchField =
+                    case SingleBatch of
+                        true -> [];
+                        false -> [{<<"singleBatch">>, SingleBatch}] 
+                    end,
+                SortField =
+                    case OrderBy of
+                        M when is_map(M), map_size(M) =:= 0 ->
+                            [];
+                        _ ->
+                            [{<<"sort">>, OrderBy}] 
+                    end,
+                CommandDoc = [
+                              {<<"find">>, Coll},
+                              {<<"$readPreference">>, ReadPref},
+                              {<<"filter">>, NewSelector},
+                              {<<"projection">>, Projector},
+                              {<<"skip">>, Skip}
+                             ] ++ SortField
+                               ++ BatchSizeField
+                               ++ SingleBatchField,
+                #op_msg_command{command_doc = CommandDoc} 
+        end,
+  case mc_connection_man:read(Connection, FixedQuery) of
     [] -> [];
     {ok, Cursor} when is_pid(Cursor) ->
       {ok, Cursor}
@@ -188,44 +310,98 @@ count(Connection, Query) ->
   {true, #{<<"n">> := N}} = command(Connection, Query),
   trunc(N). % Server returns count as float
 
-%% @doc Create index on collection according to given spec.
+%% @doc Create index on collection according to given spec. This function does
+%% not work if you have configured the driver to use the new version of the
+%% protocol with application:set_env(mongodb, use_legacy_protocol, false). In
+%% that case you can call the createIndexes
+%% (https://www.mongodb.com/docs/manual/reference/command/createIndexes/#mongodb-dbcommand-dbcmd.createIndexes)
+%% command using the `mc_worker_api:command/2` function instead. 
+%%
 %%      The key specification is a bson documents with the following fields:
 %%      IndexSpec      :: bson document, for e.g. {field, 1, other, -1, location, 2d}, <strong>required</strong>
 -spec ensure_index(pid(), colldb(), bson:document()) -> ok | {error, any()}.
 ensure_index(Connection, Coll, IndexSpec) ->
-  mc_connection_man:request_worker(Connection, #ensure_index{collection = Coll, index_spec = IndexSpec}).
+    case mc_utils:use_legacy_protocol() of
+        true ->
+            mc_connection_man:request_worker(Connection,
+                                             #ensure_index{collection = Coll,
+                                                           index_spec = IndexSpec});
+        false -> 
+           erlang:error({error, <<"This function does not work when one have specified application:set_env(mongodb, use_legacy_protocol, false). Call the createIndexes command using mc_worker_api:command/2 instead.">>}) 
+    end.
 
 %% @doc Execute given MongoDB command and return its result.
 -spec command(pid(), mc_worker_api:selector()) -> {boolean(), map()}. % Action
 command(Connection, Query) when is_record(Query, query) ->
   Doc = mc_connection_man:read_one(Connection, Query),
   mc_connection_man:process_reply(Doc, Query);
-command(Connection, Command) ->
-  command(Connection,
-    #'query'{
-      collection = <<"$cmd">>,
-      selector = Command
-    }).
+command(Connection, Command) when is_tuple(Command) ->
+  case mc_utils:use_legacy_protocol() of
+      true -> 
+          command(Connection,
+                  #'query'{
+                     collection = <<"$cmd">>,
+                     selector = Command
+                    });
+      false ->
+          command(Connection, bson:fields(Command))
+  end;
+command(Connection, Command) when is_list(Command) ->
+  case mc_utils:use_legacy_protocol() of
+      true -> 
+          command(Connection, bson:document(Command));
+      false ->
+          Msg = #op_msg_command{command_doc = fix_command_obj_list(Command)},
+          {true, mc_connection_man:op_msg_raw_result(Connection, Msg)}
+  end;
+command(Connection, Command) when is_map(Command) ->
+    command(Connection, maps:to_list(Command)).
+
+fix_command_obj_list(Map) when is_map(Map) ->
+    fix_command_obj_list(maps:to_list(Map));
+fix_command_obj_list(Tuple) when is_tuple(Tuple) ->
+    fix_command_obj_list(bson:fields(Tuple));
+fix_command_obj_list(List) when is_list(List) ->
+    %% we have to try to figure out what the command field is and put it first as the command field need to go first
+    List.
 
 command(Connection, Command, _IsSlaveOk = true) ->
-  command(Connection,
-    #'query'{
-      collection = <<"$cmd">>,
-      selector = Command,
-      slaveok = true,
-      sok_overriden = true
-    });
+    case mc_utils:use_legacy_protocol() of
+        true -> 
+            command(Connection,
+                    #'query'{
+                       collection = <<"$cmd">>,
+                       selector = Command,
+                       slaveok = true,
+                       sok_overriden = true
+                      });
+        false ->
+            Command = fix_command_obj_list(Command),
+            %% secondaryPreferred seems to correspond to slaveok in the new protocol
+            CommandExtened = Command ++ [{<<"$readPreference">>, #{<<"mode">> => <<"secondaryPreferred">>}}],
+            command(Connection, CommandExtened)
+    end;
 command(Connection, Command, _IsSlaveOk = false) ->
   command(Connection, Command).
 
 %% @doc Execute MongoDB command in this thread
--spec sync_command(port(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
+-spec sync_command(any(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
 sync_command(Socket, Database, Command, SetOpts) ->
-  Doc = mc_connection_man:read_one_sync(Socket, Database, #'query'{
-    collection = <<"$cmd">>,
-    selector = Command
-  }, SetOpts),
-  mc_connection_man:process_reply(Doc, Command).
+    case mc_utils:use_legacy_protocol() of
+        true -> 
+            Doc = mc_connection_man:read_one_sync(Socket,
+                                                  Database,
+                                                  #'query'{
+                                                     collection = <<"$cmd">>,
+                                                     selector = Command
+                                                    },
+                                                  SetOpts),
+            mc_connection_man:process_reply(Doc, Command);
+        false ->
+            Request = #op_msg_command{command_doc = fix_command_obj_list(Command)},
+            {_, [Doc]} = mc_connection_man:op_msg_sync(Socket, Database, Request, SetOpts),
+            mc_connection_man:process_reply(Doc, Command)
+    end.
 
 -spec prepare(tuple() | list() | map(), fun()) -> list().
 prepare(Docs, AssignFun) when is_tuple(Docs) -> %bson

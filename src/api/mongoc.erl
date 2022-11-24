@@ -21,6 +21,7 @@
   transaction/4,
   status/1,
   append_read_preference/2,
+  extract_read_preference/1,
   find_query/6,
   count_query/4,
   command_query/2,
@@ -147,6 +148,31 @@ append_read_preference(Selector, RP) when is_tuple(Selector) andalso element(1, 
 append_read_preference(Selector, RP) ->
   #{<<"$query">> => Selector, <<"$readPreference">> => RP}.
 
+
+extract_read_preference(#{<<"$readPreference">> := RP} = Selector) ->
+    {RP,
+     maps:get(<<"$query">>, Selector, #{}),
+     maps:get(<<"$orderby">>, Selector, #{})};
+extract_read_preference(Selector) when is_map(Selector) ->
+    {#{<<"mode">> => <<"primary">>},
+     maps:get(<<"$query">>, Selector, #{}),
+     maps:get(<<"$orderby">>, Selector, #{})};%TODO also extract orderby and what else might be inside (strange but needed to pass test)
+extract_read_preference(Selector) when is_tuple(Selector) ->
+  Fields = bson:fields(Selector),
+  Query = case lists:keyfind(<<"$query">>, 1, Fields) of
+              {_, Q} -> Q;
+              false -> #{}
+          end,
+  OrderBy = case lists:keyfind(<<"$orderby">>, 1, Fields) of
+              {_, OB} -> OB;
+              false -> #{}
+          end,
+  case lists:keyfind(<<"$readPreference">>, 1, Fields) of
+      {_, RP} ->
+          {RP, Query, OrderBy};
+      false ->
+          {#{<<"mode">> => <<"primary">>}, Query, OrderBy}
+  end.
 
 %%%===================================================================
 %%% Internal functions

@@ -166,8 +166,18 @@ handle_info(_, State) ->
 
 %% @hidden
 terminate(_, #state{cursor = 0}) -> ok;
-terminate(_, State) ->
-  gen_server:call(State#state.connection, #killcursor{cursorids = [State#state.cursor]}).
+terminate(_, #state{collection = Collection,
+                    connection = Connection,
+                    cursor = Cursor}) ->
+    case mc_utils:use_legacy_protocol() of
+        true -> 
+            gen_server:call(Connection, #killcursor{cursorids = [Cursor]});
+        false -> 
+            KillCursorCommand =
+                #op_msg_command{command_doc = [{<<"killCursors">>, Collection},
+                                               {<<"cursors">>, [Cursor]}]},
+            mc_connection_man:request_worker(Connection, KillCursorCommand)
+    end.
 
 %% @hidden
 code_change(_Old, State, _Extra) ->
@@ -179,17 +189,33 @@ next_i(#state{batch = [Doc | Rest]} = State, _Timeout) ->
 next_i(#state{batch = [], cursor = 0} = State, _Timeout) ->
   {{}, State};
 next_i(#state{batch = []} = State, Timeout) ->
-  Reply = gen_server:call(
-    State#state.connection,
-    #getmore{
-      collection = State#state.collection,
-      batchsize = State#state.batchsize,
-      cursorid = State#state.cursor
-    },
-    Timeout),
-  Cursor = Reply#reply.cursorid,
-  Batch = Reply#reply.documents,
-  next_i(State#state{cursor = Cursor, batch = Batch}, Timeout).
+    case mc_utils:use_legacy_protocol() of
+        true -> 
+            Reply = gen_server:call(
+                      State#state.connection,
+                      #getmore{
+                         collection = State#state.collection,
+                         batchsize = State#state.batchsize,
+                         cursorid = State#state.cursor
+                        },
+                      Timeout),
+            Cursor = Reply#reply.cursorid,
+            Batch = Reply#reply.documents,
+            next_i(State#state{cursor = Cursor, batch = Batch}, Timeout);
+        false -> 
+            GetMoreCommand =
+                #op_msg_command{command_doc = [{<<"getMore">>, State#state.cursor},
+                                               {<<"collection">>, State#state.collection},
+                                               {<<"batchSize">>, State#state.batchsize}]},
+            Result = mc_connection_man:request_worker(State#state.connection, GetMoreCommand),
+            case Result of
+                #{<<"cursor">>:=#{<<"id">>:=NewCursorId,<<"nextBatch">>:=Batch},<<"ok">>:=1.0} ->
+                    next_i(State#state{cursor = NewCursorId, batch = Batch}, Timeout);
+                _ ->
+                    erlang:error({error_unexpected_cursor_result, Result})
+            end
+    end.
+
 
 %% @private
 rest_i(State, infinity, Timeout) ->

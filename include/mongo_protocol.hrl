@@ -8,6 +8,7 @@
 -type colldb() :: collection() | {database(), collection()}.
 -type collection() :: binary() | atom(). % without db prefix
 -type database() :: binary() | atom().
+-type command() :: insert | update | delete.
 
 
 %% write
@@ -44,6 +45,25 @@
   projector = #{} :: mc_worker_api:projector()
 }).
 
+-record(op_msg_write_op, {
+  command :: command(),
+  collection :: colldb(),
+  database :: [] | mc_worker_api:database(),
+  extra_fields = [] :: bson:document() | nonempty_list({binary(),any()}),
+  documents_name = <<"documents">> :: bson:utf8(),
+  documents = [] :: any()
+}).
+
+-record(op_msg_response, {
+  response_doc :: map()
+}).
+
+-record(op_msg_command, {
+  database :: [] | mc_worker_api:database(),
+  command_doc :: bson:document() | nonempty_list({binary(),any()})
+}).
+
+
 -record(getmore, {
   collection :: colldb(),
   batchsize = 0 :: mc_worker_api:batchsize(),
@@ -71,9 +91,9 @@
 -record(reply, {
   cursornotfound :: boolean(),
   queryerror :: boolean(),
-  awaitcapable :: boolean(),
+  awaitcapable :: boolean() | undefined,
   cursorid :: mc_worker_api:cursorid(),
-  startingfrom :: integer(),
+  startingfrom :: integer() | undefined,
   documents :: [map()]
 }).
 -endif.
