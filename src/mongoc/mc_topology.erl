@@ -250,12 +250,19 @@ parse_ismaster(Server, IsMaster, RTT, State = #topology_state{servers = Tab}) ->
     arbiters = maps:get(<<"arbiters">>, IsMaster, []),
     electionId = maps:get(<<"electionId">>, IsMaster, undefined),
     primary = maps:get(<<"primary">>, IsMaster, undefined),
-    ismaster = maps:get(<<"ismaster">>, IsMaster, undefined),
+    ismaster = get_is_master_is_master(IsMaster),
     secondary = maps:get(<<"secondary">>, IsMaster, undefined)
   },
   ets:insert(Tab, ToUpdate),
   mc_server:update_ismaster(ToUpdate#mc_server.pid, {SType, ToUpdate}),
   mc_topology_logics:update_topology_state(ToUpdate, State).
+
+get_is_master_is_master(#{<<"ismaster">> := V} = _IsMaster) ->
+    V;
+get_is_master_is_master(#{<<"isWritablePrimary">> := V} = _IsMaster) ->
+    V;
+get_is_master_is_master(_) ->
+    undefined.
 
 %% @private
 parse_rtt(_, undefined, RTT) -> {RTT, RTT};

@@ -96,15 +96,19 @@ put_message(Db, #op_msg_write_op{} = OpMsg, _RequestId) ->
     <<
       ?put_header(?OpMsgOpcode),
       ?put_uint32(0), % Flags
-      (put_section_type_zero(OpMsg#op_msg_write_op{database = Db}))/binary
+      (put_section_type_zero(OpMsg#op_msg_write_op{database = make_bin(Db)}))/binary
     >>;
 put_message(Db, #op_msg_command{} = OpMsg, _RequestId) ->
     <<
       ?put_header(?OpMsgOpcode),
       ?put_uint32(0), % Flags
-      (put_section_type_zero(OpMsg#op_msg_command{database = Db}))/binary
+      (put_section_type_zero(OpMsg#op_msg_command{database = make_bin(Db)}))/binary
     >>.
 
+make_bin(Atom) when is_atom(Atom) ->
+    erlang:atom_to_binary(Atom, utf8);
+make_bin(Bin) ->
+    Bin.
 
 
 put_section_type_zero(#op_msg_command {

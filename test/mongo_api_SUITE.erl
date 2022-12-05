@@ -26,7 +26,7 @@ end_per_suite(_Config) ->
 init_per_testcase(Case, Config) ->
   {ok, Pid} = mongo_api:connect(single, ["localhost:27017"],
     [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}]),
-  [{connection, Pid}, {collection, mc_test_utils:collection(Case)} | Config].
+  [{connection, Pid}, {collection, mc_test_utils:collection(?MODULE, Case)} | Config].
 
 end_per_testcase(_Case, Config) ->
   Connection = ?config(connection, Config),
@@ -36,11 +36,17 @@ end_per_testcase(_Case, Config) ->
 
 %% Tests
 ensure_index_test(Config) ->
-  Pid = ?config(connection, Config),
-  Collection = ?config(collection, Config),
-  ok = mongo_api:ensure_index(Pid, Collection, #{<<"key">> => {<<"cid">>, 1, <<"ts">>, 1}}),
-  ok = mongo_api:ensure_index(Pid, Collection, {<<"key">>, {<<"z_first">>, 1, <<"a_last">>, 1}}),
-  Config.
+    case mc_utils:use_legacy_protocol() of
+        true ->
+            Pid = ?config(connection, Config),
+            Collection = ?config(collection, Config),
+            ok = mongo_api:ensure_index(Pid, Collection, #{<<"key">> => {<<"cid">>, 1, <<"ts">>, 1}}),
+            ok = mongo_api:ensure_index(Pid, Collection, {<<"key">>, {<<"z_first">>, 1, <<"a_last">>, 1}}),
+            Config;
+        false ->
+            ct:log("The ensure_index function does not work when one have specified application:set_env(mongodb, use_legacy_protocol, false)."),
+            Config
+    end.
 
 count_test(Config) ->
   Collection = ?config(collection, Config),
