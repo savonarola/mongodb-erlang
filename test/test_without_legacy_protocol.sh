@@ -2,15 +2,22 @@
 
 set -euxo pipefail
 
-docker run -p 27017:27017 --rm -d --name mongo_test mongo:5.0.14
+test_with_legacy_on () {
+    docker run -p 27017:27017 --rm -d --name mongo_test mongo:$2
+    ERL_FLAGS="-mongodb use_legacy_protocol $1" rebar3 ct
+    ERL_FLAGS="-mongodb use_legacy_protocol $1" rebar3 eunit
+    docker stop mongo_test
+}
 
-echo 'Running all tests suites with the legacy protocol enabled'
+# Test with and without legacy API in a version of MongoDB that supports both APIs
 
-ERL_FLAGS='-mongodb use_legacy_protocol true' rebar3 ct
+test_with_legacy_on true 5.0.14
+test_with_legacy_on false 5.0.14
 
-echo 'Running mc_worker_api_SUITE with the modern protocol enabled'
+# Test with the modern API in a version that only support the modern API
 
-ERL_FLAGS='-mongodb use_legacy_protocol false' rebar3 ct --suite test/mc_worker_api_SUITE.erl
+test_with_legacy_on false 6.0
 
-docker stop mongo_test
+# Test with the legacy API in a version that only support the legacy API
 
+test_with_legacy_on true 3.2

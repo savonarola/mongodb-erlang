@@ -333,8 +333,28 @@ ensure_index(Connection, Coll, IndexSpec) ->
 %% @doc Execute given MongoDB command and return its result.
 -spec command(pid(), mc_worker_api:selector()) -> {boolean(), map()}. % Action
 command(Connection, Query) when is_record(Query, query) ->
-  Doc = mc_connection_man:read_one(Connection, Query),
-  mc_connection_man:process_reply(Doc, Query);
+      case mc_utils:use_legacy_protocol() of
+          true -> 
+              Doc = mc_connection_man:read_one(Connection, Query),
+              mc_connection_man:process_reply(Doc, Query);
+          false ->
+              %% We will convert the legacy command to a modern one.
+              #query{
+                 slaveok = SlaveOk,
+                 selector = Selector} = Query,
+              Fields = bson:fields(Selector),
+              NewSelector =
+              case {lists:keyfind(<<"$readPreference">>, 1, Fields), SlaveOk} of
+                  {{<<"$readPreference">>, _}, _} -> Selector;
+                  {false, true} -> 
+                      bson:document(Fields ++ [{<<"$readPreference">>, #{<<"mode">> => <<"secondaryPreferred">>}}]);
+                  {false, false} ->
+                      %% primary is the default mode so we do not need to change anything
+                      Selector
+              end,    
+              command(Connection, NewSelector)
+      end;
+
 command(Connection, Command) when is_tuple(Command) ->
   case mc_utils:use_legacy_protocol() of
       true -> 
@@ -377,7 +397,7 @@ command(Connection, Command, _IsSlaveOk = true) ->
                       });
         false ->
             Command = fix_command_obj_list(Command),
-            %% secondaryPreferred seems to correspond to slaveok in the new protocol
+            %% slaveok seems to correspond to secondaryPreferred in the new protocol
             CommandExtened = Command ++ [{<<"$readPreference">>, #{<<"mode">> => <<"secondaryPreferred">>}}],
             command(Connection, CommandExtened)
     end;

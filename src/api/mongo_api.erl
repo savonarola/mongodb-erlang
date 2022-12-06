@@ -19,7 +19,8 @@
 -export([
   connect/4,
   insert/3,
-  find/4, find/6,
+  find/4,
+  find/6,
   find_one/4,
   find_one/5,
   find_one/6,
