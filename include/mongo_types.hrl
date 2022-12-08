@@ -31,6 +31,7 @@
 | {ssl, boolean()}
 | {ssl_opts, proplists:proplist()}
 | {register, atom() | fun()}.
+-type socket() :: gen_tcp:socket() | ssl:sslsocket().
 -type write_mode() :: unsafe | safe | {safe, bson:document()}.
 -type read_mode() :: master | slave_ok.
 -type service() :: {Host :: inet:hostname() | inet:ip_address(), Post :: 0..65535}.

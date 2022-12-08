@@ -347,7 +347,7 @@ command(Connection, Query) when is_record(Query, query) ->
               case {lists:keyfind(<<"$readPreference">>, 1, Fields), SlaveOk} of
                   {{<<"$readPreference">>, _}, _} -> Selector;
                   {false, true} -> 
-                      bson:document(Fields ++ [{<<"$readPreference">>, #{<<"mode">> => <<"secondaryPreferred">>}}]);
+                      bson:document(Fields ++ [{<<"$readPreference">>, #{<<"mode">> => <<"primaryPreferred">>}}]);
                   {false, false} ->
                       %% primary is the default mode so we do not need to change anything
                       Selector
@@ -412,15 +412,16 @@ command(Connection, Command, _IsSlaveOk = true) ->
                       });
         false ->
             Command = fix_command_obj_list(Command),
-            %% slaveok seems to correspond to secondaryPreferred in the new protocol
-            CommandExtened = Command ++ [{<<"$readPreference">>, #{<<"mode">> => <<"secondaryPreferred">>}}],
+
+            %% slaveok seems to correspond to primaryPreferred in the new protocol
+            CommandExtened = Command ++ [{<<"$readPreference">>, #{<<"mode">> => <<"primaryPreferred">>}}],
             command(Connection, CommandExtened)
     end;
 command(Connection, Command, _IsSlaveOk = false) ->
   command(Connection, Command).
 
 %% @doc Execute MongoDB command in this thread
--spec sync_command(any(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
+-spec sync_command(socket(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
 sync_command(Socket, Database, Command, SetOpts) ->
     case true of %% TODO mc_utils:use_legacy_protocol(Connection)
         true -> 
