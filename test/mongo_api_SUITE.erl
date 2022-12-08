@@ -36,7 +36,8 @@ end_per_testcase(_Case, Config) ->
 
 %% Tests
 ensure_index_test(Config) ->
-    case mc_utils:use_legacy_protocol() of
+    {ok, MCWorkerConnection} = mc_worker:start_link([{database, ?config(database, Config)}, {w_mode, safe}]),
+    case mc_utils:use_legacy_protocol(MCWorkerConnection) of
         true ->
             Pid = ?config(connection, Config),
             Collection = ?config(collection, Config),

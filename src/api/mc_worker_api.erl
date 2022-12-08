@@ -69,7 +69,7 @@ insert(Connection, Coll, Doc, WC) when is_tuple(Doc); is_map(Doc) ->
   {Res, UDoc};
 insert(Connection, Coll, Docs, WriteConcern) ->
   Converted = prepare(Docs, fun assign_id/1),
-  case mc_utils:use_legacy_protocol() of
+  case mc_utils:use_legacy_protocol(Connection) of
       true -> 
           {command(Connection, 
                    {<<"insert">>, Coll,
@@ -100,7 +100,7 @@ update(Connection, Coll, Selector, Doc, Upsert, MultiUpdate) ->
 -spec update(pid(), collection(), selector(), map(), boolean(), boolean(), bson:document()) -> {boolean(), map()}.
 update(Connection, Coll, Selector, Doc, Upsert, MultiUpdate, WC) ->
   Converted = prepare(Doc, fun(D) -> D end),
-  case mc_utils:use_legacy_protocol() of
+  case mc_utils:use_legacy_protocol(Connection) of
       true -> 
           command(Connection, {<<"update">>, Coll, <<"updates">>,
                                [#{<<"q">> => Selector,
@@ -133,7 +133,7 @@ delete_one(Connection, Coll, Selector) ->
 %% @doc Delete selected documents
 -spec delete_limit(pid(), collection(), selector(), integer()) -> {boolean(), map()}.
 delete_limit(Connection, Coll, Selector, N) ->
-  case mc_utils:use_legacy_protocol() of
+  case mc_utils:use_legacy_protocol(Connection) of
       true -> 
           command(Connection, {<<"delete">>, Coll, <<"deletes">>,
                                [#{<<"q">> => Selector, <<"limit">> => N}]});
@@ -166,7 +166,7 @@ find_one(Connection, Coll, Selector, Args) ->
       Projector = maps:get(projector, Args, #{}),
       Skip = maps:get(skip, Args, 0),
       ReadPref = maps:get(readopts, Args, #{<<"mode">> => <<"primary">>}),
-      case mc_utils:use_legacy_protocol() of
+      case mc_utils:use_legacy_protocol(Connection) of
           true -> 
               SelectorWithReadPref = mongoc:append_read_preference(Selector, ReadPref),
               find_one(Connection,
@@ -196,7 +196,7 @@ find_one(Connection, Coll, Selector, Args) ->
 
 -spec find_one(pid() | atom(), query()) -> map() | undefined.
 find_one(Connection, Query) when is_record(Query, query) ->
-    case mc_utils:use_legacy_protocol() of
+    case mc_utils:use_legacy_protocol(Connection) of
         true -> mc_connection_man:read_one(Connection, Query);
         false ->
             #'query'{collection = Coll,
@@ -222,7 +222,7 @@ find(Connection, Coll, Selector, Args) ->
   Projector = maps:get(projector, Args, #{}),
   Skip = maps:get(skip, Args, 0),
   BatchSize = 
-        case mc_utils:use_legacy_protocol() of
+        case mc_utils:use_legacy_protocol(Connection) of
             true ->
                 maps:get(batchsize, Args, 0);
             false ->
@@ -243,7 +243,7 @@ find(Connection, Coll, Selector, Args) ->
 -spec find(pid() | atom(), query()) -> {ok, cursor()} | [].
 find(Connection, Query) when is_record(Query, query) ->
     FixedQuery =
-        case mc_utils:use_legacy_protocol() of
+        case mc_utils:use_legacy_protocol(Connection) of
             true -> Query;
             false ->
                 #'query'{collection = Coll,
@@ -321,7 +321,7 @@ count(Connection, Query) ->
 %%      IndexSpec      :: bson document, for e.g. {field, 1, other, -1, location, 2d}, <strong>required</strong>
 -spec ensure_index(pid(), colldb(), bson:document()) -> ok | {error, any()}.
 ensure_index(Connection, Coll, IndexSpec) ->
-    case mc_utils:use_legacy_protocol() of
+    case mc_utils:use_legacy_protocol(Connection) of
         true ->
             mc_connection_man:request_worker(Connection,
                                              #ensure_index{collection = Coll,
@@ -333,7 +333,7 @@ ensure_index(Connection, Coll, IndexSpec) ->
 %% @doc Execute given MongoDB command and return its result.
 -spec command(pid(), mc_worker_api:selector()) -> {boolean(), map()}. % Action
 command(Connection, Query) when is_record(Query, query) ->
-      case mc_utils:use_legacy_protocol() of
+      case mc_utils:use_legacy_protocol(Connection) of
           true -> 
               Doc = mc_connection_man:read_one(Connection, Query),
               mc_connection_man:process_reply(Doc, Query);
@@ -356,7 +356,7 @@ command(Connection, Query) when is_record(Query, query) ->
       end;
 
 command(Connection, Command) when is_tuple(Command) ->
-  case mc_utils:use_legacy_protocol() of
+  case mc_utils:use_legacy_protocol(Connection) of
       true -> 
           command(Connection,
                   #'query'{
@@ -367,7 +367,7 @@ command(Connection, Command) when is_tuple(Command) ->
           command(Connection, bson:fields(Command))
   end;
 command(Connection, Command) when is_list(Command) ->
-  case mc_utils:use_legacy_protocol() of
+  case mc_utils:use_legacy_protocol(Connection) of
       true -> 
           command(Connection, bson:document(Command));
       false ->
@@ -401,7 +401,7 @@ fix_command_obj_list(List) when is_list(List) ->
     List.
 
 command(Connection, Command, _IsSlaveOk = true) ->
-    case mc_utils:use_legacy_protocol() of
+    case mc_utils:use_legacy_protocol(Connection) of
         true -> 
             command(Connection,
                     #'query'{
@@ -422,7 +422,7 @@ command(Connection, Command, _IsSlaveOk = false) ->
 %% @doc Execute MongoDB command in this thread
 -spec sync_command(any(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
 sync_command(Socket, Database, Command, SetOpts) ->
-    case mc_utils:use_legacy_protocol() of
+    case true of %% TODO mc_utils:use_legacy_protocol(Connection)
         true -> 
             Doc = mc_connection_man:read_one_sync(Socket,
                                                   Database,

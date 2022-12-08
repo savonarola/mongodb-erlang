@@ -130,8 +130,8 @@ init([Owner, Connection, Collection, Cursor, BatchSize, Batch]) ->
            }}.
 
 %% @hidden
-handle_call({next, Timeout}, _From, State) ->
-  case next_i(State, Timeout) of
+handle_call({next, Timeout}, _From, #state{connection = Connection} = State) ->
+  case next_i(State, Timeout, Connection) of
     {Reply, #state{cursor = 0, batch = []} = UpdatedState} ->
       {stop, normal, Reply, UpdatedState};
     {Reply, UpdatedState} ->
@@ -169,7 +169,7 @@ terminate(_, #state{cursor = 0}) -> ok;
 terminate(_, #state{collection = Collection,
                     connection = Connection,
                     cursor = Cursor}) ->
-    case mc_utils:use_legacy_protocol() of
+    case mc_utils:use_legacy_protocol(Connection) of
         true -> 
             gen_server:call(Connection, #killcursor{cursorids = [Cursor]});
         false -> 
@@ -184,12 +184,12 @@ code_change(_Old, State, _Extra) ->
   {ok, State}.
 
 %% @private
-next_i(#state{batch = [Doc | Rest]} = State, _Timeout) ->
+next_i(#state{batch = [Doc | Rest]} = State, _Timeout, _Connection) ->
   {{Doc}, State#state{batch = Rest}};
-next_i(#state{batch = [], cursor = 0} = State, _Timeout) ->
+next_i(#state{batch = [], cursor = 0} = State, _Timeout, _Connection) ->
   {{}, State};
-next_i(#state{batch = []} = State, Timeout) ->
-    case mc_utils:use_legacy_protocol() of
+next_i(#state{batch = []} = State, Timeout, Connection) ->
+    case mc_utils:use_legacy_protocol(Connection) of
         true -> 
             Reply = gen_server:call(
                       State#state.connection,
@@ -201,7 +201,7 @@ next_i(#state{batch = []} = State, Timeout) ->
                       Timeout),
             Cursor = Reply#reply.cursorid,
             Batch = Reply#reply.documents,
-            next_i(State#state{cursor = Cursor, batch = Batch}, Timeout);
+            next_i(State#state{cursor = Cursor, batch = Batch}, Timeout, Connection);
         false -> 
             GetMoreCommand =
                 #op_msg_command{command_doc = [{<<"getMore">>, State#state.cursor},
@@ -210,7 +210,7 @@ next_i(#state{batch = []} = State, Timeout) ->
             Result = mc_connection_man:request_worker(State#state.connection, GetMoreCommand),
             case Result of
                 #{<<"cursor">>:=#{<<"id">>:=NewCursorId,<<"nextBatch">>:=Batch},<<"ok">>:=1.0} ->
-                    next_i(State#state{cursor = NewCursorId, batch = Batch}, Timeout);
+                    next_i(State#state{cursor = NewCursorId, batch = Batch}, Timeout, Connection);
                 _ ->
                     erlang:error({error_unexpected_cursor_result, Result})
             end
@@ -227,8 +227,8 @@ rest_i(State, Limit, Timeout) when is_integer(Limit) ->
 %% @private
 rest_i(State, Acc, 0, _Timeout) ->
   {Acc, State};
-rest_i(State, Acc, Limit, Timeout) ->
-  case next_i(State, Timeout) of
+rest_i(#state{connection = Connection} = State, Acc, Limit, Timeout) ->
+  case next_i(State, Timeout, Connection) of
     {{}, UpdatedState} -> {Acc, UpdatedState};
     {{Doc}, UpdatedState} ->
       rest_i(UpdatedState, [Doc | Acc], Limit - 1, Timeout)

@@ -13,5 +13,6 @@ start(_, _) ->
 
 %% @hidden
 stop(_) ->
+        mc_worker_pid_info:stop(),
 	ok.
 

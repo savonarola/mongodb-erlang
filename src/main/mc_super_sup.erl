@@ -16,4 +16,5 @@ start_link() ->
 %% @hidden
 init(app) ->
 	MongoIdServer = ?CHILD(mongo_id_server, worker),
-	{ok, {{one_for_one, 1000, 3600}, [MongoIdServer]}}.
+	PIDInfoServer = ?CHILD(mc_worker_pid_info, worker),
+	{ok, {{one_for_one, 1000, 3600}, [MongoIdServer, PIDInfoServer]}}.

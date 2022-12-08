@@ -133,7 +133,7 @@ validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
   case mc_worker_api:connect(ConnectArgs) of
     {ok, Conn} ->
       {true, MaybeMaster} =
-          case mc_utils:use_legacy_protocol() of
+          case mc_utils:use_legacy_protocol(Conn) of
               true ->
                   mc_worker_api:command(Conn, {isMaster, 1});
               false ->

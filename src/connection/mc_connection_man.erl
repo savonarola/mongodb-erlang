@@ -18,7 +18,7 @@
 %% API
 -export([request_worker/2, process_reply/2]).
 -export([read/2, read_one/2, read_one_sync/4]).
--export([op_msg/2, op_msg_sync/4, op_msg_read_one/2, op_msg_raw_result/2]).
+-export([op_msg/2, op_msg_sync/4, op_msg_read_one/2, op_msg_raw_result/2, request_raw_no_parse/4]).
 
 -spec read(pid() | atom(), query()) -> [] | {ok, pid()}.
 read(Connection, Request = #'query'{collection = Collection, batchsize = BatchSize}) ->
@@ -142,6 +142,13 @@ request_raw(Socket, Database, Request, NetModule) ->
   ok = set_opts(Socket, NetModule, true),
   Reply = hd(Responses),
   reply(Reply).
+
+%% @private
+request_raw_no_parse(Socket, Database, Request, NetModule) ->
+  Timeout = mc_utils:get_timeout(),
+  ok = set_opts(Socket, NetModule, false),
+  {ok, _, _} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
+  recv_all(Socket, Timeout, NetModule).
 
 %% @private
 set_opts(Socket, ssl, Value) ->

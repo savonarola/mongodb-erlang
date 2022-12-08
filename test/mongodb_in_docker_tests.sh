@@ -21,3 +21,10 @@ test_with_legacy_on false 6.0
 # Test with the legacy API in a version that only support the legacy API
 
 test_with_legacy_on true 3.2
+
+# Test automatic protocol detection with several different versisons
+
+for VERSION in 3.0 3.2 5.0.14 6.0
+do
+    test_with_legacy_on auto "$VERSION"
+done

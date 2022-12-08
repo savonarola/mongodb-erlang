@@ -20,4 +20,4 @@ jobs:
         with:
           otp-version: ${{matrix.otp}}
           rebar3-version: ${{matrix.rebar3}}
-      - run: ./test/test_without_legacy_protocol.sh
+      - run: ./test/mongodb_in_docker_tests.sh
