@@ -130,12 +130,18 @@ init_seeds([Addr | Seeds], Tab, Topts, Wopts) ->
   init_seeds(Seeds, Tab, Topts, Wopts).
 
 validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
-  {ok, Conn} = mc_worker_api:connect(ConnectArgs),
-  {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
-  mc_worker_api:disconnect(Conn),
-  ServerType = server_type(IsMaster),
-  ServerSetName = maps:get(<<"setName">>, IsMaster, undefined),
+  case mc_worker_api:connect(ConnectArgs) of
+    {ok, Conn} ->
+      {true, MaybeMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
+      mc_worker_api:disconnect(Conn),
+      ServerType = server_type(MaybeMaster),
+      ServerSetName = maps:get(<<"setName">>, MaybeMaster, undefined),
+      validate_server_and_config(TopologyType, TopologySetName, ServerType, ServerSetName);
+    {error, Reason} ->
+      {connect_failed, Reason}
+  end.
 
+validate_server_and_config(TopologyType, TopologySetName, ServerType, ServerSetName) ->
   case TopologyType of
     unknown when ?SEC_ARB_OTH(ServerType) ->
       ?LOG_TOPOLOGY_ERROR(unknown, ServerType),
@@ -168,7 +174,6 @@ validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
     _ when ServerType == rsPrimary andalso ServerSetName /= TopologySetName ->
       ?LOG_SET_NAME_ERROR(TopologySetName, ServerSetName),
       {configured_mongo_set_name_mismatch, TopologySetName, ServerSetName};
-
     _ ->
       ok
   end.
