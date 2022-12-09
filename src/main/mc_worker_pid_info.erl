@@ -26,6 +26,7 @@ start_link() ->
 	gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init(_) ->
+    erlang:process_flag(trap_exit, true),
     ets:new(?MC_WORKER_PID_INFO_TAB_NAME, [public, named_table, {read_concurrency, true}]),
     erlang:start_timer(timer:minutes(?CLEAN_TABLE_PERIOD_MINS), self(), ?CLEAN_TABLE_MESSAGE, []),
     {ok, start_cleanup_timer_update_state(#{})}.
@@ -52,7 +53,7 @@ handle_info({timeout,
              ?CLEAN_TABLE_MESSAGE},
             #{cleanup_timer_ref := TimerRef} = State) ->
     PidInfos = ets:tab2list(?MC_WORKER_PID_INFO_TAB_NAME),
-    [delete_pid_if_dead(Pid) || {Pid, _} <- PidInfos],
+    lists:foreach(fun({Pid, _}) -> delete_pid_if_dead(Pid) end, PidInfos),
     {noreply, start_cleanup_timer_update_state(State)};
 handle_info(_, State) ->
     {noreply, State}.
@@ -72,7 +73,7 @@ get_info(MCWorkerPID) ->
                 not_found
         end
     catch
-        _:_:_ ->
+        _:_ ->
             not_found
     end.
 

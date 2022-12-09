@@ -327,7 +327,7 @@ ensure_index(Connection, Coll, IndexSpec) ->
                                              #ensure_index{collection = Coll,
                                                            index_spec = IndexSpec});
         false -> 
-           erlang:error({error, <<"This function does not work when one have specified application:set_env(mongodb, use_legacy_protocol, false). Call the createIndexes command using mc_worker_api:command/2 instead.">>}) 
+           {error, <<"This function does not work when one have specified application:set_env(mongodb, use_legacy_protocol, false). Call the createIndexes command using mc_worker_api:command/2 instead.">>} 
     end.
 
 %% @doc Execute given MongoDB command and return its result.
@@ -354,7 +354,6 @@ command(Connection, Query) when is_record(Query, query) ->
               end,    
               command(Connection, NewSelector)
       end;
-
 command(Connection, Command) when is_tuple(Command) ->
   case mc_utils:use_legacy_protocol(Connection) of
       true -> 

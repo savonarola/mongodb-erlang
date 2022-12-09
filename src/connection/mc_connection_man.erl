@@ -68,15 +68,15 @@ op_msg_read_one(Connection, OpMsg) ->
   Response = gen_server:call(Connection, OpMsg, Timeout),
   case Response of
       #op_msg_response{response_doc =
-                        #{<<"ok">> := 1.0,
-                           <<"cursor">>:=
-                               #{<<"firstBatch">>:=[Doc],
-                                 <<"id">>:=0}
-                         }} ->
+                       #{<<"ok">> := 1.0,
+                         <<"cursor">>:=
+                         #{<<"firstBatch">>:=[Doc],
+                           <<"id">>:=0}
+                        }} ->
           Doc;
       #op_msg_response{response_doc =
                        #{<<"ok">> := 1.0}} ->
-                          undefined;
+          undefined;
       #op_msg_response{response_doc = Doc} ->
           erlang:error({error, Doc});
       _ ->
@@ -148,7 +148,9 @@ request_raw_no_parse(Socket, Database, Request, NetModule) ->
   Timeout = mc_utils:get_timeout(),
   ok = set_opts(Socket, NetModule, false),
   {ok, _, _} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
-  recv_all(Socket, Timeout, NetModule).
+  Result = recv_all(Socket, Timeout, NetModule),
+  ok = set_opts(Socket, NetModule, true),
+  Result.
 
 %% @private
 set_opts(Socket, ssl, Value) ->

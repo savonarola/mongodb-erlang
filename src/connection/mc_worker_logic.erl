@@ -65,7 +65,7 @@ process_responses(Responses, RequestStorage) ->
       end
     end, RequestStorage, Responses).
 
-%% -spec make_request(any(), atom(), mc_worker_api:database(), mongo_protocol:message()) -> {ok | {error, any()}, integer(), pos_integer()}.
+-spec make_request(any(), atom(), mc_worker_api:database(), mongo_protocol:message()) -> {ok | {error, any()}, integer(), pos_integer()}.
 make_request(Socket, NetModule, Database, Request) ->
   {Packet, Id} = encode_request(Database, Request),
   {NetModule:send(Socket, Packet), byte_size(Packet), Id}.

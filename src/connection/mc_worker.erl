@@ -70,6 +70,7 @@ init(Options) ->
 
 install_mc_worker_info_and_connect(Conf) ->
     try
+        {ok, Socket} = mc_worker_logic:connect_to_database(Conf),
         %% We install info (protocol type) about the worker in an ETS table outside
         %% the process so we can construct the right kind of messages to send to
         %% the process
@@ -83,8 +84,7 @@ install_mc_worker_info_and_connect(Conf) ->
                     %% 352* (UnsupportedOpQueryCommand), we are in a version that
                     %% don't support the legacy protocol so we use the op_msg based
                     %% protocol instead.
-                    %% * https://github.com/mongodb/mongo/blob/master/src/mongo/base/error_codes.yml
-                    {ok, InitSocket} = mc_worker_logic:connect_to_database(Conf),
+                    %% * https://github.com/mongodb/mongo/blob/5e494138af456f42381ad08748cc7fbc4ace7a60/src/mongo/base/error_codes.yml
                     NetModule = get_set_opts_module(Conf),
                     Database = mc_utils:get_value(database, Conf, <<"admin">>),
 
@@ -94,10 +94,7 @@ install_mc_worker_info_and_connect(Conf) ->
                                  selector = Command,
                                  batchsize = -1
                                 },
-                    Response = mc_connection_man:request_raw_no_parse(InitSocket, Database, Request, NetModule),
-                    %% We have to create a new connection because the previous one does not
-                    %% accept new commands after it got a bad command
-                    NetModule:close(InitSocket),
+                    Response = mc_connection_man:request_raw_no_parse(Socket, Database, Request, NetModule),
                     case Response of
                         [{_, #reply{documents = [#{<<"code">> := 352, <<"ok">> := 0.0}|_]}}|_] ->
                             op_msg;
@@ -106,9 +103,9 @@ install_mc_worker_info_and_connect(Conf) ->
                     end
             end,
         mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType}),
-        mc_worker_logic:connect_to_database(Conf)
+        {ok, Socket}
     catch
-        What:Reason:_ ->
+        What:Reason ->
             {error, {What, Reason}}
     end.
 
