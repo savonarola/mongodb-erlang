@@ -6,16 +6,19 @@
 
 -behaviour(gen_server).
 
+-include("mongo_protocol.hrl").
+
 -export([start_link/0,
          init/1,
          terminate/2,
          handle_cast/2,
          handle_call/3,
+         handle_info/2,
          get_info/1,
          set_info/2,
          discard_info/1,
          get_protocol_type/1,
-         handle_info/2]).
+         install_mc_worker_info/3]).
 
 -define(CLEAN_TABLE_PERIOD_MINS, 30).
 -define(CLEAN_TABLE_MESSAGE, clean_table).
@@ -45,8 +48,8 @@ terminate(_,_) ->
 
 %% These functions does not do anyting as this server is just a holder of an
 %% ETS table
-handle_cast(_Request, _State) -> {noreply, #{}}.
-handle_call(_Request, _From, _State) -> {reply, ok, #{}}.
+handle_cast(_Request, State) -> {noreply, State}.
+handle_call(_Request, _From, State) -> {reply, {error, ignore}, State}.
 
 handle_info({timeout,
              TimerRef,
@@ -95,3 +98,41 @@ get_protocol_type(MCWorkerPID) ->
             legacy
     end.
 
+%% This process should be called from mc_worker processes to install their info
+%% in the ?MC_WORKER_PID_INFO_TAB_NAME ETS table
+install_mc_worker_info(Socket, NetModule, Database) ->
+    try
+        ProtocolType = detect_protocol_type(Socket, NetModule, Database),
+        mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType}),
+        ok
+    catch
+        What:Reason ->
+            NetModule:close(Socket),
+            {error, {What, Reason}}
+    end.
+
+detect_protocol_type(Socket, NetModule, Database) ->
+    case application:get_env(mongodb, use_legacy_protocol, auto) of
+        true -> legacy;
+        false -> op_msg; %% modern protocol based on the op_msg package
+        auto ->
+            %% Automatically detect which protocol to use. We send a
+            %% command using the old protocol. If we get back error code
+            %% 352* (UnsupportedOpQueryCommand), we are in a version that
+            %% don't support the legacy protocol so we use the op_msg based
+            %% protocol instead.
+            %% * https://github.com/mongodb/mongo/blob/5e494138af456f42381ad08748cc7fbc4ace7a60/src/mongo/base/error_codes.yml
+            Command = bson:document([{<<"notExistingCommandXyzErlang">>, <<"void">>}]),
+            Request = #'query'{
+                         collection = <<"$cmd">>,
+                         selector = Command,
+                         batchsize = -1
+                        },
+            Response = mc_connection_man:request_raw_no_parse(Socket, Database, Request, NetModule),
+            case Response of
+                [{_, #reply{documents = [#{<<"code">> := 352, <<"ok">> := 0.0}|_]}}|_] ->
+                    op_msg;
+                _ErrorResponse ->
+                    legacy
+            end
+    end.

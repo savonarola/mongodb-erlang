@@ -44,7 +44,7 @@ disconnect(Worker) ->
 
 init(Options) ->
   proc_lib:init_ack({ok, self()}),
-  case install_mc_worker_info_and_connect(Options) of
+  case mc_worker_logic:connect_to_database(Options) of
     {ok, Socket} ->
       ConnState = form_state(Options),
       try_register(Options),
@@ -52,62 +52,27 @@ init(Options) ->
       Login = mc_utils:get_value(login, Options),
       Password = mc_utils:get_value(password, Options),
       NextReqFun = mc_utils:get_value(next_req_fun, Options, fun() -> ok end),
-      case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
+      case mc_worker_pid_info:install_mc_worker_info(Socket,
+                                                NetModule,
+                                                ConnState#conn_state.database) of
         ok ->
-          maybe_reply_parent(Options, connect_complete),
-          gen_server:enter_loop(?MODULE, [],
-              #state{socket = Socket,
-                     conn_state = ConnState,
-                     net_module = NetModule,
-                     next_req_fun = NextReqFun});
-        {error, _} = Err ->
-          maybe_reply_parent(Options, Err)
+          case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
+            ok ->
+              gen_server:enter_loop(?MODULE, [],
+                  #state{socket = Socket,
+                         conn_state = ConnState,
+                         net_module = NetModule,
+                         next_req_fun = NextReqFun}),
+              ignore;
+            {error, _} = Error ->
+              maybe_reply_parent(Options, Error)
+          end;
+        Error ->
+          maybe_reply_parent(Options, Error)
       end;
     Error ->
       maybe_reply_parent(Options, Error)
   end.
-
-
-install_mc_worker_info_and_connect(Conf) ->
-    try
-        {ok, Socket} = mc_worker_logic:connect_to_database(Conf),
-        %% We install info (protocol type) about the worker in an ETS table outside
-        %% the process so we can construct the right kind of messages to send to
-        %% the process
-        ProtocolType =
-            case application:get_env(mongodb, use_legacy_protocol, auto) of
-                true -> legacy;
-                false -> op_msg; %% modern protocol based on the op_msg package
-                auto ->
-                    %% Automatically detect which protocol to use. We send a
-                    %% command using the old protocol. If we get back error code
-                    %% 352* (UnsupportedOpQueryCommand), we are in a version that
-                    %% don't support the legacy protocol so we use the op_msg based
-                    %% protocol instead.
-                    %% * https://github.com/mongodb/mongo/blob/5e494138af456f42381ad08748cc7fbc4ace7a60/src/mongo/base/error_codes.yml
-                    NetModule = get_set_opts_module(Conf),
-                    Database = mc_utils:get_value(database, Conf, <<"admin">>),
-
-                    Command = bson:document([{<<"notExistingCommandXyzErlang">>, <<"void">>}]),
-                    Request = #'query'{
-                                 collection = <<"$cmd">>,
-                                 selector = Command,
-                                 batchsize = -1
-                                },
-                    Response = mc_connection_man:request_raw_no_parse(Socket, Database, Request, NetModule),
-                    case Response of
-                        [{_, #reply{documents = [#{<<"code">> := 352, <<"ok">> := 0.0}|_]}}|_] ->
-                            op_msg;
-                        _ErrorResponse ->
-                            legacy
-                    end
-            end,
-        mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType}),
-        {ok, Socket}
-    catch
-        What:Reason ->
-            {error, {What, Reason}}
-    end.
 
 handle_call(NewState, _, State = #state{conn_state = OldState}) when is_record(NewState, conn_state) ->  % update state, return old
   {reply, {ok, OldState}, State#state{conn_state = NewState}};
