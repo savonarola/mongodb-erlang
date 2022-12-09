@@ -38,7 +38,7 @@
   prepare/2]).
 
 %% @doc Make one connection to server, return its pid
--spec connect(args()) -> {ok, pid()}.
+-spec connect(args()) -> {ok, pid()} | {error, Reason :: term()}.
 connect(Args) ->
   mc_worker:start_link(Args).
 

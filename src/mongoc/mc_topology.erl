@@ -56,7 +56,7 @@ init([SeedsList, TopologyOptions, WorkerOptions]) ->
     get_pool_timeout = GetPoolTimeout
   },
   gen_server:cast(self(), init_seeds),
-  {Host, Port} = 
+  {Host, Port} =
     case Seeds of
       [Seed|_] ->
         mc_util:parse_seed(Seed);
