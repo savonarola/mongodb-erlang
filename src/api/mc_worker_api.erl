@@ -379,9 +379,7 @@ command(Connection, Command) when is_map(Command) ->
 %% Converts map to a bson fields list. Makes sure that the command is placed
 %% first as this is a requirement from MongoDB
 map_to_command(Command) ->
-    ExistingCommands = get_existing_commands_map(),
-    IsCommand = fun(Name) -> maps:get(Name, ExistingCommands, false) end,
-    case lists:search(IsCommand, maps:keys(Command)) of
+    case lists:search(fun is_command/1, maps:keys(Command)) of
         {value, Key} ->
             CommandValue = maps:get(Key, Command),
             NewCommand1 = maps:remove(Key, Command),
@@ -499,305 +497,302 @@ assign_id(Doc) ->
 
 %% Source https://www.mongodb.com/docs/manual/reference/command/
 %% Might need to get updated if commands are added
-get_existing_commands_map() ->
-    #{
-      <<"aggregate">> => true,
-      aggregate => true,
-      <<"count">> => true,
-      count => true,
-      <<"distinct">> => true,
-      distinct => true,
-      <<"mapReduce">> => true,
-      mapReduce => true,
-      <<"geoSearch">> => true,
-      geoSearch => true,
-      <<"delete">> => true,
-      delete => true,
-      <<"find">> => true,
-      find => true,
-      <<"findAndModify">> => true,
-      findAndModify => true,
-      <<"getMore">> => true,
-      getMore => true,
-      <<"insert">> => true,
-      insert => true,
-      <<"resetError">> => true,
-      resetError => true,
-      <<"update">> => true,
-      update => true,
-      <<"planCacheClear">> => true,
-      planCacheClear => true,
-      <<"planCacheClearFilters">> => true,
-      planCacheClearFilters => true,
-      <<"planCacheListFilters">> => true,
-      planCacheListFilters => true,
-      <<"planCacheSetFilter">> => true,
-      planCacheSetFilter => true,
-      <<"authenticate">> => true,
-      authenticate => true,
-      <<"getnonce">> => true,
-      getnonce => true,
-      <<"logout">> => true,
-      logout => true,
-      <<"createUser">> => true,
-      createUser => true,
-      <<"dropAllUsersFromDatabase">> => true,
-      dropAllUsersFromDatabase => true,
-      <<"dropUser">> => true,
-      dropUser => true,
-      <<"grantRolesToUser">> => true,
-      grantRolesToUser => true,
-      <<"revokeRolesFromUser">> => true,
-      revokeRolesFromUser => true,
-      <<"updateUser">> => true,
-      updateUser => true,
-      <<"usersInfo">> => true,
-      usersInfo => true,
-      <<"createRole">> => true,
-      createRole => true,
-      <<"dropRole">> => true,
-      dropRole => true,
-      <<"dropAllRolesFromDatabase">> => true,
-      dropAllRolesFromDatabase => true,
-      <<"grantPrivilegesToRole">> => true,
-      grantPrivilegesToRole => true,
-      <<"grantRolesToRole">> => true,
-      grantRolesToRole => true,
-      <<"invalidateUserCache">> => true,
-      invalidateUserCache => true,
-      <<"revokePrivilegesFromRole">> => true,
-      revokePrivilegesFromRole => true,
-      <<"revokeRolesFromRole">> => true,
-      revokeRolesFromRole => true,
-      <<"rolesInfo">> => true,
-      rolesInfo => true,
-      <<"updateRole">> => true,
-      updateRole => true,
-      <<"applyOps">> => true,
-      applyOps => true,
-      <<"hello">> => true,
-      hello => true,
-      <<"replSetAbortPrimaryCatchUp">> => true,
-      replSetAbortPrimaryCatchUp => true,
-      <<"replSetFreeze">> => true,
-      replSetFreeze => true,
-      <<"replSetGetConfig">> => true,
-      replSetGetConfig => true,
-      <<"replSetGetStatus">> => true,
-      replSetGetStatus => true,
-      <<"replSetInitiate">> => true,
-      replSetInitiate => true,
-      <<"replSetMaintenance">> => true,
-      replSetMaintenance => true,
-      <<"replSetReconfig">> => true,
-      replSetReconfig => true,
-      <<"replSetResizeOplog">> => true,
-      replSetResizeOplog => true,
-      <<"replSetStepDown">> => true,
-      replSetStepDown => true,
-      <<"replSetSyncFrom">> => true,
-      replSetSyncFrom => true,
-      <<"abortReshardCollection">> => true,
-      abortReshardCollection => true,
-      <<"addShard">> => true,
-      addShard => true,
-      <<"addShardToZone">> => true,
-      addShardToZone => true,
-      <<"balancerCollectionStatus">> => true,
-      balancerCollectionStatus => true,
-      <<"balancerStart">> => true,
-      balancerStart => true,
-      <<"balancerStatus">> => true,
-      balancerStatus => true,
-      <<"balancerStop">> => true,
-      balancerStop => true,
-      <<"checkShardingIndex">> => true,
-      checkShardingIndex => true,
-      <<"clearJumboFlag">> => true,
-      clearJumboFlag => true,
-      <<"cleanupOrphaned">> => true,
-      cleanupOrphaned => true,
-      <<"cleanupReshardCollection">> => true,
-      cleanupReshardCollection => true,
-      <<"commitReshardCollection">> => true,
-      commitReshardCollection => true,
-      <<"configureCollectionBalancing">> => true,
-      configureCollectionBalancing => true,
-      <<"enableSharding">> => true,
-      enableSharding => true,
-      <<"flushRouterConfig">> => true,
-      flushRouterConfig => true,
-      <<"getShardMap">> => true,
-      getShardMap => true,
-      <<"getShardVersion">> => true,
-      getShardVersion => true,
-      <<"isdbgrid">> => true,
-      isdbgrid => true,
-      <<"listShards">> => true,
-      listShards => true,
-      <<"medianKey">> => true,
-      medianKey => true,
-      <<"moveChunk">> => true,
-      moveChunk => true,
-      <<"movePrimary">> => true,
-      movePrimary => true,
-      <<"mergeChunks">> => true,
-      mergeChunks => true,
-      <<"refineCollectionShardKey">> => true,
-      refineCollectionShardKey => true,
-      <<"removeShard">> => true,
-      removeShard => true,
-      <<"removeShardFromZone">> => true,
-      removeShardFromZone => true,
-      <<"reshardCollection">> => true,
-      reshardCollection => true,
-      <<"setShardVersion">> => true,
-      setShardVersion => true,
-      <<"shardCollection">> => true,
-      shardCollection => true,
-      <<"shardingState">> => true,
-      shardingState => true,
-      <<"split">> => true,
-      split => true,
-      <<"splitVector">> => true,
-      splitVector => true,
-      <<"unsetSharding">> => true,
-      unsetSharding => true,
-      <<"updateZoneKeyRange">> => true,
-      updateZoneKeyRange => true,
-      <<"abortTransaction">> => true,
-      abortTransaction => true,
-      <<"commitTransaction">> => true,
-      commitTransaction => true,
-      <<"endSessions">> => true,
-      endSessions => true,
-      <<"killAllSessions">> => true,
-      killAllSessions => true,
-      <<"killAllSessionsByPattern">> => true,
-      killAllSessionsByPattern => true,
-      <<"killSessions">> => true,
-      killSessions => true,
-      <<"refreshSessions">> => true,
-      refreshSessions => true,
-      <<"startSession">> => true,
-      startSession => true,
-      <<"cloneCollectionAsCapped">> => true,
-      cloneCollectionAsCapped => true,
-      <<"collMod">> => true,
-      collMod => true,
-      <<"compact">> => true,
-      compact => true,
-      <<"compactStructuredEncryptionData">> => true,
-      compactStructuredEncryptionData => true,
-      <<"convertToCapped">> => true,
-      convertToCapped => true,
-      <<"create">> => true,
-      create => true,
-      <<"createIndexes">> => true,
-      createIndexes => true,
-      <<"currentOp">> => true,
-      currentOp => true,
-      <<"drop">> => true,
-      drop => true,
-      <<"dropDatabase">> => true,
-      dropDatabase => true,
-      <<"dropConnections">> => true,
-      dropConnections => true,
-      <<"dropIndexes">> => true,
-      dropIndexes => true,
-      <<"filemd5">> => true,
-      filemd5 => true,
-      <<"fsync">> => true,
-      fsync => true,
-      <<"fsyncUnlock">> => true,
-      fsyncUnlock => true,
-      <<"getDefaultRWConcern">> => true,
-      getDefaultRWConcern => true,
-      <<"getClusterParameter">> => true,
-      getClusterParameter => true,
-      <<"getParameter">> => true,
-      getParameter => true,
-      <<"killCursors">> => true,
-      killCursors => true,
-      <<"killOp">> => true,
-      killOp => true,
-      <<"listCollections">> => true,
-      listCollections => true,
-      <<"listDatabases">> => true,
-      listDatabases => true,
-      <<"listIndexes">> => true,
-      listIndexes => true,
-      <<"logRotate">> => true,
-      logRotate => true,
-      <<"reIndex">> => true,
-      reIndex => true,
-      <<"renameCollection">> => true,
-      renameCollection => true,
-      <<"rotateCertificates">> => true,
-      rotateCertificates => true,
-      <<"setFeatureCompatibilityVersion">> => true,
-      setFeatureCompatibilityVersion => true,
-      <<"setIndexCommitQuorum">> => true,
-      setIndexCommitQuorum => true,
-      <<"setClusterParameter">> => true,
-      setClusterParameter => true,
-      <<"setParameter">> => true,
-      setParameter => true,
-      <<"setDefaultRWConcern">> => true,
-      setDefaultRWConcern => true,
-      <<"shutdown">> => true,
-      shutdown => true,
-      <<"buildInfo">> => true,
-      buildInfo => true,
-      <<"collStats">> => true,
-      collStats => true,
-      <<"connPoolStats">> => true,
-      connPoolStats => true,
-      <<"connectionStatus">> => true,
-      connectionStatus => true,
-      <<"dataSize">> => true,
-      dataSize => true,
-      <<"dbHash">> => true,
-      dbHash => true,
-      <<"dbStats">> => true,
-      dbStats => true,
-      <<"driverOIDTest">> => true,
-      driverOIDTest => true,
-      <<"explain">> => true,
-      explain => true,
-      <<"features">> => true,
-      features => true,
-      <<"getCmdLineOpts">> => true,
-      getCmdLineOpts => true,
-      <<"getLog">> => true,
-      getLog => true,
-      <<"hostInfo">> => true,
-      hostInfo => true,
-      <<"_isSelf">> => true,
-      '_isSelf' => true,
-      <<"listCommands">> => true,
-      listCommands => true,
-      <<"lockInfo">> => true,
-      lockInfo => true,
-      <<"netstat">> => true,
-      netstat => true,
-      <<"ping">> => true,
-      ping => true,
-      <<"profile">> => true,
-      profile => true,
-      <<"serverStatus">> => true,
-      serverStatus => true,
-      <<"shardConnPoolStats">> => true,
-      shardConnPoolStats => true,
-      <<"top">> => true,
-      top => true,
-      <<"validate">> => true,
-      validate => true,
-      <<"whatsmyuri">> => true,
-      whatsmyuri => true,
-      <<"setFreeMonitoring">> => true,
-      setFreeMonitoring => true,
-      <<"logApplicationMessage">> => true,
-      logApplicationMessage => true
-     }.
-
+is_command(<<"aggregate">>) -> true;
+is_command(aggregate) -> true;
+is_command(<<"count">>) -> true;
+is_command(count) -> true;
+is_command(<<"distinct">>) -> true;
+is_command(distinct) -> true;
+is_command(<<"mapReduce">>) -> true;
+is_command(mapReduce) -> true;
+is_command(<<"geoSearch">>) -> true;
+is_command(geoSearch) -> true;
+is_command(<<"delete">>) -> true;
+is_command(delete) -> true;
+is_command(<<"find">>) -> true;
+is_command(find) -> true;
+is_command(<<"findAndModify">>) -> true;
+is_command(findAndModify) -> true;
+is_command(<<"getMore">>) -> true;
+is_command(getMore) -> true;
+is_command(<<"insert">>) -> true;
+is_command(insert) -> true;
+is_command(<<"resetError">>) -> true;
+is_command(resetError) -> true;
+is_command(<<"update">>) -> true;
+is_command(update) -> true;
+is_command(<<"planCacheClear">>) -> true;
+is_command(planCacheClear) -> true;
+is_command(<<"planCacheClearFilters">>) -> true;
+is_command(planCacheClearFilters) -> true;
+is_command(<<"planCacheListFilters">>) -> true;
+is_command(planCacheListFilters) -> true;
+is_command(<<"planCacheSetFilter">>) -> true;
+is_command(planCacheSetFilter) -> true;
+is_command(<<"authenticate">>) -> true;
+is_command(authenticate) -> true;
+is_command(<<"getnonce">>) -> true;
+is_command(getnonce) -> true;
+is_command(<<"logout">>) -> true;
+is_command(logout) -> true;
+is_command(<<"createUser">>) -> true;
+is_command(createUser) -> true;
+is_command(<<"dropAllUsersFromDatabase">>) -> true;
+is_command(dropAllUsersFromDatabase) -> true;
+is_command(<<"dropUser">>) -> true;
+is_command(dropUser) -> true;
+is_command(<<"grantRolesToUser">>) -> true;
+is_command(grantRolesToUser) -> true;
+is_command(<<"revokeRolesFromUser">>) -> true;
+is_command(revokeRolesFromUser) -> true;
+is_command(<<"updateUser">>) -> true;
+is_command(updateUser) -> true;
+is_command(<<"usersInfo">>) -> true;
+is_command(usersInfo) -> true;
+is_command(<<"createRole">>) -> true;
+is_command(createRole) -> true;
+is_command(<<"dropRole">>) -> true;
+is_command(dropRole) -> true;
+is_command(<<"dropAllRolesFromDatabase">>) -> true;
+is_command(dropAllRolesFromDatabase) -> true;
+is_command(<<"grantPrivilegesToRole">>) -> true;
+is_command(grantPrivilegesToRole) -> true;
+is_command(<<"grantRolesToRole">>) -> true;
+is_command(grantRolesToRole) -> true;
+is_command(<<"invalidateUserCache">>) -> true;
+is_command(invalidateUserCache) -> true;
+is_command(<<"revokePrivilegesFromRole">>) -> true;
+is_command(revokePrivilegesFromRole) -> true;
+is_command(<<"revokeRolesFromRole">>) -> true;
+is_command(revokeRolesFromRole) -> true;
+is_command(<<"rolesInfo">>) -> true;
+is_command(rolesInfo) -> true;
+is_command(<<"updateRole">>) -> true;
+is_command(updateRole) -> true;
+is_command(<<"applyOps">>) -> true;
+is_command(applyOps) -> true;
+is_command(<<"hello">>) -> true;
+is_command(hello) -> true;
+is_command(<<"replSetAbortPrimaryCatchUp">>) -> true;
+is_command(replSetAbortPrimaryCatchUp) -> true;
+is_command(<<"replSetFreeze">>) -> true;
+is_command(replSetFreeze) -> true;
+is_command(<<"replSetGetConfig">>) -> true;
+is_command(replSetGetConfig) -> true;
+is_command(<<"replSetGetStatus">>) -> true;
+is_command(replSetGetStatus) -> true;
+is_command(<<"replSetInitiate">>) -> true;
+is_command(replSetInitiate) -> true;
+is_command(<<"replSetMaintenance">>) -> true;
+is_command(replSetMaintenance) -> true;
+is_command(<<"replSetReconfig">>) -> true;
+is_command(replSetReconfig) -> true;
+is_command(<<"replSetResizeOplog">>) -> true;
+is_command(replSetResizeOplog) -> true;
+is_command(<<"replSetStepDown">>) -> true;
+is_command(replSetStepDown) -> true;
+is_command(<<"replSetSyncFrom">>) -> true;
+is_command(replSetSyncFrom) -> true;
+is_command(<<"abortReshardCollection">>) -> true;
+is_command(abortReshardCollection) -> true;
+is_command(<<"addShard">>) -> true;
+is_command(addShard) -> true;
+is_command(<<"addShardToZone">>) -> true;
+is_command(addShardToZone) -> true;
+is_command(<<"balancerCollectionStatus">>) -> true;
+is_command(balancerCollectionStatus) -> true;
+is_command(<<"balancerStart">>) -> true;
+is_command(balancerStart) -> true;
+is_command(<<"balancerStatus">>) -> true;
+is_command(balancerStatus) -> true;
+is_command(<<"balancerStop">>) -> true;
+is_command(balancerStop) -> true;
+is_command(<<"checkShardingIndex">>) -> true;
+is_command(checkShardingIndex) -> true;
+is_command(<<"clearJumboFlag">>) -> true;
+is_command(clearJumboFlag) -> true;
+is_command(<<"cleanupOrphaned">>) -> true;
+is_command(cleanupOrphaned) -> true;
+is_command(<<"cleanupReshardCollection">>) -> true;
+is_command(cleanupReshardCollection) -> true;
+is_command(<<"commitReshardCollection">>) -> true;
+is_command(commitReshardCollection) -> true;
+is_command(<<"configureCollectionBalancing">>) -> true;
+is_command(configureCollectionBalancing) -> true;
+is_command(<<"enableSharding">>) -> true;
+is_command(enableSharding) -> true;
+is_command(<<"flushRouterConfig">>) -> true;
+is_command(flushRouterConfig) -> true;
+is_command(<<"getShardMap">>) -> true;
+is_command(getShardMap) -> true;
+is_command(<<"getShardVersion">>) -> true;
+is_command(getShardVersion) -> true;
+is_command(<<"isdbgrid">>) -> true;
+is_command(isdbgrid) -> true;
+is_command(<<"listShards">>) -> true;
+is_command(listShards) -> true;
+is_command(<<"medianKey">>) -> true;
+is_command(medianKey) -> true;
+is_command(<<"moveChunk">>) -> true;
+is_command(moveChunk) -> true;
+is_command(<<"movePrimary">>) -> true;
+is_command(movePrimary) -> true;
+is_command(<<"mergeChunks">>) -> true;
+is_command(mergeChunks) -> true;
+is_command(<<"refineCollectionShardKey">>) -> true;
+is_command(refineCollectionShardKey) -> true;
+is_command(<<"removeShard">>) -> true;
+is_command(removeShard) -> true;
+is_command(<<"removeShardFromZone">>) -> true;
+is_command(removeShardFromZone) -> true;
+is_command(<<"reshardCollection">>) -> true;
+is_command(reshardCollection) -> true;
+is_command(<<"setShardVersion">>) -> true;
+is_command(setShardVersion) -> true;
+is_command(<<"shardCollection">>) -> true;
+is_command(shardCollection) -> true;
+is_command(<<"shardingState">>) -> true;
+is_command(shardingState) -> true;
+is_command(<<"split">>) -> true;
+is_command(split) -> true;
+is_command(<<"splitVector">>) -> true;
+is_command(splitVector) -> true;
+is_command(<<"unsetSharding">>) -> true;
+is_command(unsetSharding) -> true;
+is_command(<<"updateZoneKeyRange">>) -> true;
+is_command(updateZoneKeyRange) -> true;
+is_command(<<"abortTransaction">>) -> true;
+is_command(abortTransaction) -> true;
+is_command(<<"commitTransaction">>) -> true;
+is_command(commitTransaction) -> true;
+is_command(<<"endSessions">>) -> true;
+is_command(endSessions) -> true;
+is_command(<<"killAllSessions">>) -> true;
+is_command(killAllSessions) -> true;
+is_command(<<"killAllSessionsByPattern">>) -> true;
+is_command(killAllSessionsByPattern) -> true;
+is_command(<<"killSessions">>) -> true;
+is_command(killSessions) -> true;
+is_command(<<"refreshSessions">>) -> true;
+is_command(refreshSessions) -> true;
+is_command(<<"startSession">>) -> true;
+is_command(startSession) -> true;
+is_command(<<"cloneCollectionAsCapped">>) -> true;
+is_command(cloneCollectionAsCapped) -> true;
+is_command(<<"collMod">>) -> true;
+is_command(collMod) -> true;
+is_command(<<"compact">>) -> true;
+is_command(compact) -> true;
+is_command(<<"compactStructuredEncryptionData">>) -> true;
+is_command(compactStructuredEncryptionData) -> true;
+is_command(<<"convertToCapped">>) -> true;
+is_command(convertToCapped) -> true;
+is_command(<<"create">>) -> true;
+is_command(create) -> true;
+is_command(<<"createIndexes">>) -> true;
+is_command(createIndexes) -> true;
+is_command(<<"currentOp">>) -> true;
+is_command(currentOp) -> true;
+is_command(<<"drop">>) -> true;
+is_command(drop) -> true;
+is_command(<<"dropDatabase">>) -> true;
+is_command(dropDatabase) -> true;
+is_command(<<"dropConnections">>) -> true;
+is_command(dropConnections) -> true;
+is_command(<<"dropIndexes">>) -> true;
+is_command(dropIndexes) -> true;
+is_command(<<"filemd5">>) -> true;
+is_command(filemd5) -> true;
+is_command(<<"fsync">>) -> true;
+is_command(fsync) -> true;
+is_command(<<"fsyncUnlock">>) -> true;
+is_command(fsyncUnlock) -> true;
+is_command(<<"getDefaultRWConcern">>) -> true;
+is_command(getDefaultRWConcern) -> true;
+is_command(<<"getClusterParameter">>) -> true;
+is_command(getClusterParameter) -> true;
+is_command(<<"getParameter">>) -> true;
+is_command(getParameter) -> true;
+is_command(<<"killCursors">>) -> true;
+is_command(killCursors) -> true;
+is_command(<<"killOp">>) -> true;
+is_command(killOp) -> true;
+is_command(<<"listCollections">>) -> true;
+is_command(listCollections) -> true;
+is_command(<<"listDatabases">>) -> true;
+is_command(listDatabases) -> true;
+is_command(<<"listIndexes">>) -> true;
+is_command(listIndexes) -> true;
+is_command(<<"logRotate">>) -> true;
+is_command(logRotate) -> true;
+is_command(<<"reIndex">>) -> true;
+is_command(reIndex) -> true;
+is_command(<<"renameCollection">>) -> true;
+is_command(renameCollection) -> true;
+is_command(<<"rotateCertificates">>) -> true;
+is_command(rotateCertificates) -> true;
+is_command(<<"setFeatureCompatibilityVersion">>) -> true;
+is_command(setFeatureCompatibilityVersion) -> true;
+is_command(<<"setIndexCommitQuorum">>) -> true;
+is_command(setIndexCommitQuorum) -> true;
+is_command(<<"setClusterParameter">>) -> true;
+is_command(setClusterParameter) -> true;
+is_command(<<"setParameter">>) -> true;
+is_command(setParameter) -> true;
+is_command(<<"setDefaultRWConcern">>) -> true;
+is_command(setDefaultRWConcern) -> true;
+is_command(<<"shutdown">>) -> true;
+is_command(shutdown) -> true;
+is_command(<<"buildInfo">>) -> true;
+is_command(buildInfo) -> true;
+is_command(<<"collStats">>) -> true;
+is_command(collStats) -> true;
+is_command(<<"connPoolStats">>) -> true;
+is_command(connPoolStats) -> true;
+is_command(<<"connectionStatus">>) -> true;
+is_command(connectionStatus) -> true;
+is_command(<<"dataSize">>) -> true;
+is_command(dataSize) -> true;
+is_command(<<"dbHash">>) -> true;
+is_command(dbHash) -> true;
+is_command(<<"dbStats">>) -> true;
+is_command(dbStats) -> true;
+is_command(<<"driverOIDTest">>) -> true;
+is_command(driverOIDTest) -> true;
+is_command(<<"explain">>) -> true;
+is_command(explain) -> true;
+is_command(<<"features">>) -> true;
+is_command(features) -> true;
+is_command(<<"getCmdLineOpts">>) -> true;
+is_command(getCmdLineOpts) -> true;
+is_command(<<"getLog">>) -> true;
+is_command(getLog) -> true;
+is_command(<<"hostInfo">>) -> true;
+is_command(hostInfo) -> true;
+is_command(<<"_isSelf">>) -> true;
+is_command('_isSelf') -> true;
+is_command(<<"listCommands">>) -> true;
+is_command(listCommands) -> true;
+is_command(<<"lockInfo">>) -> true;
+is_command(lockInfo) -> true;
+is_command(<<"netstat">>) -> true;
+is_command(netstat) -> true;
+is_command(<<"ping">>) -> true;
+is_command(ping) -> true;
+is_command(<<"profile">>) -> true;
+is_command(profile) -> true;
+is_command(<<"serverStatus">>) -> true;
+is_command(serverStatus) -> true;
+is_command(<<"shardConnPoolStats">>) -> true;
+is_command(shardConnPoolStats) -> true;
+is_command(<<"top">>) -> true;
+is_command(top) -> true;
+is_command(<<"validate">>) -> true;
+is_command(validate) -> true;
+is_command(<<"whatsmyuri">>) -> true;
+is_command(whatsmyuri) -> true;
+is_command(<<"setFreeMonitoring">>) -> true;
+is_command(setFreeMonitoring) -> true;
+is_command(<<"logApplicationMessage">>) -> true;
+is_command(logApplicationMessage) -> true;
+is_command(_) -> false.
