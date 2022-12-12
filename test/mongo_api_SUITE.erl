@@ -24,8 +24,16 @@ end_per_suite(_Config) ->
   ok.
 
 init_per_testcase(Case, Config) ->
+  Login = application:get_env(mongodb, test_auth_login, undefined),
+  Password = application:get_env(mongodb, test_auth_password, undefined),
+  AuthConfig =
+    case {Login, Password} of
+        {undefined, _} -> [];
+        {_, undefined} -> [];
+        _ -> [{login, erlang:atom_to_binary(Login)}, {password, erlang:atom_to_binary(Password)}]
+    end,
   {ok, Pid} = mongo_api:connect(single, ["localhost:27017"],
-    [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}]),
+    [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}] ++ AuthConfig),
   [{connection, Pid}, {collection, mc_test_utils:collection(?MODULE, Case)} | Config].
 
 end_per_testcase(_Case, Config) ->

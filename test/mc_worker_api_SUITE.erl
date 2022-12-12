@@ -28,7 +28,18 @@ end_per_suite(_Config) ->
   ok.
 
 init_per_testcase(Case, Config) ->
-  {ok, Connection} = mc_worker:start_link([{database, ?config(database, Config)}, {w_mode, safe}]),
+  Login = application:get_env(mongodb, test_auth_login, undefined),
+  Password = application:get_env(mongodb, test_auth_password, undefined),
+  AuthConfig =
+    case {Login, Password} of
+        {undefined, _} -> [];
+        {_, undefined} -> [];
+        _ -> [{login, erlang:atom_to_binary(Login)}, {password, erlang:atom_to_binary(Password)}]
+    end,
+  {ok, Connection} =
+    mc_worker:start_link([{database, ?config(database, Config)},
+                          {w_mode, safe}]
+                         ++ AuthConfig),
   [{connection, Connection}, {collection, mc_test_utils:collection(?MODULE, Case)} | Config].
 
 end_per_testcase(_Case, Config) ->
