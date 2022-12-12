@@ -140,7 +140,7 @@ request_raw(Socket, Database, Request, NetModule) ->
   {ok, _, _} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
   Responses = recv_all(Socket, Timeout, NetModule),
   ok = set_opts(Socket, NetModule, true),
-  Reply = hd(Responses),
+  {_Id, Reply} = hd(Responses),
   reply(Reply).
 
 %% @private

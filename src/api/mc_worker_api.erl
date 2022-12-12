@@ -35,6 +35,7 @@
   command/2,
   command/3,
   sync_command/4,
+  sync_command/5,
   ensure_index/3,
   prepare/2]).
 
@@ -418,9 +419,17 @@ command(Connection, Command, _IsSlaveOk = false) ->
   command(Connection, Command).
 
 %% @doc Execute MongoDB command in this thread
+%%
+%% This function uses the legacy protocol (without OP_MSG packages) that was
+%% removed in Mongo DB 5.1. Use sync_command(Socket, Database, Command,
+%% SetOpts, false) for the corresponding function that sends commands using the
+%% OP_MSG based protocol. 
 -spec sync_command(socket(), binary(), mc_worker_api:selector(), module()) -> {boolean(), map()}.
 sync_command(Socket, Database, Command, SetOpts) ->
-    case true of %% TODO mc_utils:use_legacy_protocol(Connection)
+    sync_command(Socket, Database, Command, SetOpts, true).
+
+sync_command(Socket, Database, Command, SetOpts, UseLegacyProtocol) ->
+    case UseLegacyProtocol of
         true -> 
             Doc = mc_connection_man:read_one_sync(Socket,
                                                   Database,
@@ -432,7 +441,7 @@ sync_command(Socket, Database, Command, SetOpts) ->
             mc_connection_man:process_reply(Doc, Command);
         false ->
             Request = #op_msg_command{command_doc = fix_command_obj_list(Command)},
-            {_, [Doc]} = mc_connection_man:op_msg_sync(Socket, Database, Request, SetOpts),
+            Doc = mc_connection_man:op_msg_sync(Socket, Database, Request, SetOpts),
             mc_connection_man:process_reply(Doc, Command)
     end.
 

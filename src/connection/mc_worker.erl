@@ -53,8 +53,8 @@ init(Options) ->
       Password = mc_utils:get_value(password, Options),
       NextReqFun = mc_utils:get_value(next_req_fun, Options, fun() -> ok end),
       case mc_worker_pid_info:install_mc_worker_info(Socket,
-                                                NetModule,
-                                                ConnState#conn_state.database) of
+                                                     NetModule,
+                                                     ConnState#conn_state.database) of
         ok ->
           case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
             ok ->
