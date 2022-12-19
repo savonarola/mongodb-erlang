@@ -32,7 +32,12 @@ init_per_testcase(Case, Config) ->
         {_, undefined} -> [];
         _ -> [{login, erlang:atom_to_binary(Login)}, {password, erlang:atom_to_binary(Password)}]
     end,
-  {ok, Pid} = mongo_api:connect(single, ["localhost:27017"],
+  {SeedType, URLs} =
+    case application:get_env(mongodb, test_mongo_api_connection_type, single) of
+        single -> {single, ["localhost:27017"]};
+        replica_set -> {{rs,<<"my-mongo-set">>},["localhost:30001","localhost:30002","localhost:30003"]}
+    end,
+  {ok, Pid} = mongo_api:connect(SeedType, URLs,
     [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}] ++ AuthConfig),
   [{connection, Pid}, {collection, mc_test_utils:collection(?MODULE, Case)} | Config].
 

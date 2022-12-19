@@ -47,3 +47,22 @@ do
     test_with_legacy_on auto "$VERSION" ""
     test_with_legacy_on auto "$VERSION" "-mongodb test_auth_login $LOGIN -mongodb test_auth_password $PASSWORD"
 done
+
+# Test that we can connect to a replica set and run mongo_api_SUITE
+
+( rm test/replica_set_setup/data/replica_set_initialized; true )
+
+( cd test/replica_set_setup/ && docker-compose up -d )
+
+while [ ! -f test/replica_set_setup/data/replica_set_initialized ]
+do
+    sleep 1
+done
+
+sleep 1
+
+export ERL_FLAGS='-mongodb test_mongo_api_connection_type replica_set'
+
+ERL_FLAGS="$ERL_FLAGS" rebar3 ct --suite mongo_api_SUITE --case count_test,find_one_test,find_test,upsert_and_update_test
+
+( cd test/replica_set_setup/ && docker-compose down )
