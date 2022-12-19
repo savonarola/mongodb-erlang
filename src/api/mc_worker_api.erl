@@ -29,7 +29,8 @@
 -export([
   count/3,
   count/4,
-  count/2]).
+  count/2
+  ]).
 -export([
   command/2,
   command/3,
