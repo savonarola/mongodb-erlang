@@ -33,6 +33,9 @@ Start all applications, needed by mongodb
 __Important__: 
 `mongoc` API was changed in `3.0.0`.  
 `mc_cursor` API was changed in `3.0.0.`  
+`ensure_index` function in `mc_worker_api` and mongo_api should not be used in
+`3.0.16+`. See the documentation for these functions for more info. Use the
+`command` functions to send a `createIndexes` command instead.
 
 This driver has two api modules - `mc_worker_api` and `mongo_api`. 
 `mc_worker_api` works directly with one connection, while all `mongo_api`

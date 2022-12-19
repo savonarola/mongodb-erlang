@@ -116,7 +116,15 @@ command(Topology, Command, Timeout) ->
       mc_worker_api:command(Worker, Query)
     end, #{}, Timeout).
 
-%% @doc Creates index on collection according to given spec.
+%% @doc Creates index on collection according to given spec. This function does
+%% not work if you have configured the driver to use the new version of the
+%% protocol with application:set_env(mongodb, use_legacy_protocol, false). In
+%% that case you can call the createIndexes
+%% (https://www.mongodb.com/docs/manual/reference/command/createIndexes/#mongodb-dbcommand-dbcmd.createIndexes)
+%% command using the `mc_worker_api:command/2` function instead. 
+%%
+%%      The key specification is a bson documents with the following fields:
+%%      IndexSpec      :: bson document, for e.g. {field, 1, other, -1, location, 2d}, <strong>required</strong>
 %%      The key specification is a bson documents with the following fields:
 %%      key      :: bson document, for e.g. {field, 1, other, -1, location, 2d}, <strong>required</strong>
 -spec ensure_index(pid() | atom(), collection(), bson:document()) -> transaction_result(ok).
