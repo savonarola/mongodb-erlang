@@ -68,6 +68,7 @@ init(Options) ->
               maybe_reply_parent(Options, Error)
           end;
         Error ->
+          %% Note: the socket is closed by `install_mc_worker_info', so it won't leak here.
           maybe_reply_parent(Options, Error)
       end;
     Error ->
