@@ -50,7 +50,7 @@ done
 
 # Test that we can connect to a replica set and run mongo_api_SUITE
 
-( rm test/replica_set_setup/data/replica_set_initialized; true )
+( rm test/replica_set_setup/data/replica_set_initialized || true )
 
 ( cd test/replica_set_setup/ && docker-compose up -d )
 
