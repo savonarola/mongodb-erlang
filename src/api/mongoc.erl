@@ -23,6 +23,7 @@
   append_read_preference/2,
   find_query/6,
   count_query/4,
+  command_query/2,
   find_one_query/5]).
 
 
@@ -122,6 +123,14 @@ count_query(#{server_type := ServerType, read_preference := RPrefs}, Coll, Selec
 count_query(#{server_type := ServerType, read_preference := RPrefs}, Coll, Selector, Limit) ->
   Command =
     {<<"count">>, mc_utils:value_to_binary(Coll), <<"query">>, Selector, <<"limit">>, Limit},
+  Q = #'query'{
+    collection = <<"$cmd">>,
+    selector = Command
+  },
+  mongos_query_transform(ServerType, Q, RPrefs).
+
+-spec command_query(map(), selector()) -> query().
+command_query(#{server_type := ServerType, read_preference := RPrefs}, Command) ->
   Q = #'query'{
     collection = <<"$cmd">>,
     selector = Command

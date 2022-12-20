@@ -26,6 +26,7 @@
   update/5,
   delete/3,
   count/4,
+  command/3,
   ensure_index/3,
   disconnect/1]).
 
@@ -105,6 +106,14 @@ count(Topology, Collection, Selector, Limit) ->
       mc_worker_api:count(Worker, Query)
     end,
     #{}).
+
+-spec command(atom() | pid(), selector(), timeout()) -> transaction_result(integer()).
+command(Topology, Command, Timeout) ->
+  mongoc:transaction_query(Topology,
+    fun(Conf = #{pool := Worker}) ->
+      Query = mongoc:command_query(Conf, Command),
+      mc_worker_api:command(Worker, Query)
+    end, #{}, Timeout).
 
 %% @doc Creates index on collection according to given spec.
 %%      The key specification is a bson documents with the following fields:
