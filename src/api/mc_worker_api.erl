@@ -38,10 +38,20 @@
   ensure_index/3,
   prepare/2]).
 
+-define(START_WORKER_TIMEOUT, 30000).
+
 %% @doc Make one connection to server, return its pid
 -spec connect(args()) -> {ok, pid()} | {error, Reason :: term()}.
 connect(Args) ->
-  mc_worker:start_link(Args).
+  case mc_worker:start_link([{parent, self()} | Args]) of
+    {ok, Pid} ->
+      StartWorkerTimeout = mc_utils:get_value(start_worker_timeout, Args, ?START_WORKER_TIMEOUT),
+      case mc_util:wait_connect_complete(1, StartWorkerTimeout) of
+        ok -> {ok, Pid};
+        {error, _} = Err -> Err
+      end;
+    {error, _} = Err -> Err
+  end.
 
 -spec disconnect(pid()) -> ok.
 disconnect(Connection) ->

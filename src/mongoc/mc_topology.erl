@@ -39,7 +39,7 @@ init([SeedsList, TopologyOptions, WorkerOptions]) ->
   LocalThresholdMS = mc_utils:get_value(localThresholdMS, TopologyOptions, 200),
   RPmode = mc_utils:get_value(rp_mode, TopologyOptions, primary),
   RPTags = mc_utils:get_value(tags, TopologyOptions, []),
-  GetPoolTimeout = mc_utils:get_value(get_pool_timeout, TopologyOptions, 5000),
+  GetPoolTimeout = mc_utils:get_value(get_pool_timeout, TopologyOptions, 30000),
   Servers = ets:new(mc_servers, [set, {keypos, 2}]),
   State = #topology_state{
     self = self(),

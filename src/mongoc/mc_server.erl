@@ -24,6 +24,7 @@
   code_change/3]).
 
 -define(SERVER, ?MODULE).
+-define(START_WORKER_TIMEOUT, 30000).
 
 -record(state,
 {
@@ -166,12 +167,19 @@ init_monitor(#state{topology = Topology, host = Host, port = Port, topology_opts
 
 %% @private
 init_pool(#state{host = Host, port = Port, pool_conf = Conf, worker_opts = Wopts}) ->
-  WO = lists:append([{host, Host}, {port, Port}], Wopts),
+  WO = [{host, Host}, {port, Port}, {parent, self()} | Wopts],
   %{ok, Child} = mc_pool_sup:start_pool(Conf, WO),
   PoolArgs = [{worker_module, mc_worker}] ++ Conf,
-  {ok, Child} = poolboy:start_link(PoolArgs, WO),
-  link(Child),
-  Child.
+  {ok, PoolPid} = poolboy:start_link(PoolArgs, WO),
+  PoolSize = mc_utils:get_value(pool_size, WO, 1),
+  StartWorkerTimeout = mc_utils:get_value(start_worker_timeout, WO, ?START_WORKER_TIMEOUT),
+  case mc_util:wait_connect_complete(PoolSize, StartWorkerTimeout) of
+    ok ->
+      link(PoolPid),
+      PoolPid;
+    {error, Reason} ->
+      throw({init_pool_failed, Reason})
+  end.
 
 %% @private
 form_pool_conf(TopologyOptions) ->

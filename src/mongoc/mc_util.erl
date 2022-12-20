@@ -10,7 +10,7 @@
 -include("mongoc.hrl").
 
 %% API
--export([form_connect_args/4, parse_seed/1]).
+-export([form_connect_args/4, parse_seed/1, wait_connect_complete/2]).
 
 
 %%%===================================================================
@@ -28,3 +28,24 @@ parse_seed(Addr) when is_list(Addr) ->
              _ -> Host0
          end,
   {Host, list_to_integer(Port)}.
+
+wait_connect_complete(PoolSize, Timeout) when PoolSize > 0 ->
+    try
+        Responses = collect_worker_responses(PoolSize, Timeout),
+        case lists:filter(fun(R) -> R =/= connect_complete end, Responses) of
+            [] -> ok;
+            [{error, FirstError} | _] -> {error, FirstError}
+        end
+    catch
+        throw:timeout ->
+            logger:log(error, "[ecpool_worker_sup] wait_connect_complete timeout"),
+            {error, timeout}
+    end.
+
+collect_worker_responses(PoolSize, Timeout) ->
+    [
+        receive {mc_worker_reply, Resp} -> Resp
+        after Timeout -> %% the overall timeout waiting for all workers
+            throw(timeout)
+        end || _ <- lists:seq(1, PoolSize)
+    ].

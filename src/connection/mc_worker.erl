@@ -42,6 +42,7 @@ disconnect(Worker) ->
   gen_server:cast(Worker, halt).
 
 init(Options) ->
+  proc_lib:init_ack({ok, self()}),
   case mc_worker_logic:connect_to_database(Options) of
     {ok, Socket} ->
       ConnState = form_state(Options),
@@ -52,17 +53,17 @@ init(Options) ->
       NextReqFun = mc_utils:get_value(next_req_fun, Options, fun() -> ok end),
       case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
         ok ->
-          proc_lib:init_ack({ok, self()}),
+          maybe_reply_parent(Options, connect_complete),
           gen_server:enter_loop(?MODULE, [],
               #state{socket = Socket,
                      conn_state = ConnState,
                      net_module = NetModule,
                      next_req_fun = NextReqFun});
-        {error, Reason} ->
-          proc_lib:init_ack({error, Reason})
+        {error, _} = Err ->
+          maybe_reply_parent(Options, Err)
       end;
     Error ->
-      proc_lib:init_ack(Error)
+      maybe_reply_parent(Options, Error)
   end.
 
 handle_call(NewState, _, State = #state{conn_state = OldState}) when is_record(NewState, conn_state) ->  % update state, return old
@@ -104,7 +105,7 @@ handle_info({Net, _Socket, Data}, State = #state{request_storage = RequestStorag
   UState = need_hibernate(byte_size(Buffer), State),
   {noreply, UState#state{buffer = Pending, request_storage = UReqStor}};
 handle_info({NetR, _Socket}, State) when NetR =:= tcp_closed; NetR =:= ssl_closed ->
-  {stop, tcp_closed, State};
+  {stop, {shutdown, tcp_closed}, State};
 handle_info(hibernate, State) ->
   {noreply, State#state{hibernate_timer = undefined}, hibernate};
 handle_info({NetR, _Socket, Reason}, State) when NetR =:= tcp_errror; NetR =:= ssl_error ->
@@ -120,6 +121,15 @@ terminate(_, State = #state{net_module = NetModule}) ->
 %% @hidden
 code_change(_Old, State, _Extra) ->
   {ok, State}.
+
+maybe_reply_parent(Opts, Response) ->
+  Parent = mc_utils:get_value(parent, Opts),
+  do_maybe_reply_parent(Parent, Response).
+
+do_maybe_reply_parent(undefined, _Response) ->
+  ok;
+do_maybe_reply_parent(Parent, Response) ->
+  Parent ! {mc_worker_reply, Response}.
 
 %% @private
 process_read_request(Request, From, State) ->
