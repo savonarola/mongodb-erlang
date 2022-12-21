@@ -10,6 +10,8 @@
 
 -behaviour(gen_server).
 
+-include("mongo_logging.hrl").
+
 %% API
 -export([start_link/5, do_timeout/2, next_loop/1, update_type/2, stop/1]).
 
@@ -57,6 +59,7 @@ stop(Pid) ->
 %%%===================================================================
 
 init([Topology, Server, {Host, Port}, Topts, Wopts]) ->
+  ?STORE_TAG(monitor),
   process_flag(trap_exit, true),
   ConnectTimeoutMS = proplists:get_value(connectTimeoutMS, Topts, 20000),
   HeartbeatFrequencyMS = proplists:get_value(heartbeatFrequencyMS, Topts, 10000),
@@ -66,7 +69,8 @@ init([Topology, Server, {Host, Port}, Topts, Wopts]) ->
     topology_opts = Topts, worker_opts = Wopts, connect_to = ConnectTimeoutMS,
     heartbeatF = HeartbeatFrequencyMS, minHeartbeatF = MinHeartbeatFrequencyMS}}.
 
-terminate(_Reason, _State) ->
+terminate(Reason, _State) ->
+  ?DEBUG("mc_monitor terminate, Reason=~p", [Reason]),
   ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -100,7 +104,8 @@ handle_cast(halt, State) ->
 handle_cast(_Request, State) ->
   {noreply, State}.
 
-handle_info({'EXIT', Pid, _Reason}, State = #state{server = Pid}) ->
+handle_info({'EXIT', Pid, Reason}, State = #state{server = Pid}) ->
+  ?DEBUG("mc_monitor exit from ~p, Reason=~p", [Pid, Reason]),
   exit(kill),
   {noreply, State};
 handle_info(_Info, State) ->
@@ -144,7 +149,8 @@ maybe_recheck(_, Topology, Server, ConnectArgs, HB_MS, MinHB_MS) ->
       gen_server:cast(Topology, Res),
       next_loop(self(), HB_MS)
   catch
-    _:_ ->
+    Error:Reason ->
+      ?DEBUG("mc_monitor check failure: ~p", [{Error, Reason}]),
       gen_server:cast(Topology, {server_to_unknown, Server}),
       next_loop(self(), MinHB_MS)
   end.
@@ -152,10 +158,12 @@ maybe_recheck(_, Topology, Server, ConnectArgs, HB_MS, MinHB_MS) ->
 %% @private
 check(ConnectArgs, Server) ->
   Start = os:timestamp(),
-  {ok, Conn} = mc_worker_api:connect(ConnectArgs),
+  ?DEBUG("mc_monitor check start: ~p", [Server]),
+  {ok, Conn} = mc_worker_api:connect(?TAGGED(monitor, ConnectArgs)),
   {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
   Finish = os:timestamp(),
   mc_worker_api:disconnect(Conn),
+  ?DEBUG("mc_monitor check finish: ~p", [Server]),
   {monitor_ismaster, Server, IsMaster, timer:now_diff(Finish, Start)}.
 
 %% @private

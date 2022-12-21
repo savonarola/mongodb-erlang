@@ -2,6 +2,7 @@
 -behaviour(gen_server).
 
 -include("mongo_protocol.hrl").
+-include("mongo_logging.hrl").
 
 -define(WRITE(Req), is_record(Req, insert); is_record(Req, update); is_record(Req, delete)).
 -define(READ(Req), is_record(Request, 'query'); is_record(Request, getmore)).
@@ -27,6 +28,8 @@
 
 -spec start_link(proplists:proplist()) -> {ok, pid()}.
 start_link(Options) ->
+  ?STORE_TAG_FROM_OPTS(Options),
+  ?DEBUG("Starting mc_worker: ~p", [?SECURE(Options)]),
   proc_lib:start_link(?MODULE, init, [Options]).
 
 %% Make worker to go into hibernate. Any next call will wake it.
@@ -42,16 +45,21 @@ disconnect(Worker) ->
   gen_server:cast(Worker, halt).
 
 init(Options) ->
+  ?STORE_TAG_FROM_OPTS(Options),
+  ?DEBUG("Starting connect_to_database: ~p", [?SECURE(Options)]),
   case mc_worker_logic:connect_to_database(Options) of
     {ok, Socket} ->
+      ?DEBUG("mc_worker socket created: ~p", [?SECURE(Options)]),
       ConnState = form_state(Options),
       try_register(Options),
       NetModule = get_set_opts_module(Options),
       Login = mc_utils:get_value(login, Options),
       Password = mc_utils:get_value(password, Options),
       NextReqFun = mc_utils:get_value(next_req_fun, Options, fun() -> ok end),
+      ?DEBUG("mc_worker starting auth: ~p", [{NetModule, Login}]),
       case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
         ok ->
+          ?DEBUG("mc_worker auth success, sending init_ack"),
           proc_lib:init_ack({ok, self()}),
           gen_server:enter_loop(?MODULE, [],
               #state{socket = Socket,
@@ -59,9 +67,11 @@ init(Options) ->
                      net_module = NetModule,
                      next_req_fun = NextReqFun});
         {error, Reason} ->
+          ?DEBUG("mc_worker auth failure=~p, sending init_ack", [Reason]),
           proc_lib:init_ack({error, Reason})
       end;
     Error ->
+      ?DEBUG("mc_worker auth error=~p, sending init_ack", [Error]),
       proc_lib:init_ack(Error)
   end.
 
@@ -123,6 +133,7 @@ code_change(_Old, State, _Extra) ->
 
 %% @private
 process_read_request(Request, From, State) ->
+  ?DEBUG("mc_worker read request: ~p", [Request]),
   #state{socket = Socket,
     request_storage = RequestStorage,
     conn_state = CS,
@@ -149,11 +160,13 @@ process_read_request(Request, From, State) ->
 %% @deprecated
 %% @private
 process_write_request(Request, _, State = #state{conn_state = #conn_state{write_mode = unsafe, database = Db}}) ->
+  ?DEBUG("mc_worker write request: ~p", [Request]),
   #state{socket = Socket, net_module = NetModule} = State,
   {ok, PacketSize, _} = mc_worker_logic:make_request(Socket, NetModule, Db, Request),
   UState = need_hibernate(PacketSize, State),
   {reply, ok, UState};
 process_write_request(Request, From, State = #state{conn_state = #conn_state{write_mode = Safe, database = Db}}) ->
+  ?DEBUG("mc_worker write request: ~p", [Request]),
   #state{socket = Socket, net_module = NetModule, request_storage = ReqStor} = State,
   Params = case Safe of safe -> {}; {safe, Param} -> Param end,
   ConfirmWrite =

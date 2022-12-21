@@ -11,6 +11,7 @@
 -behaviour(gen_server).
 
 -include("mongoc.hrl").
+-include("mongo_logging.hrl").
 
 %% API
 -export([start/4, get_pool/1, get_pool/2, update_ismaster/2, update_unknown/1]).
@@ -56,6 +57,8 @@ start(Topology, HostPort, Topts, Wopts) ->
 %%%===================================================================
 
 init([Topology, Addr, TopologyOptions, Wopts]) ->
+  ?STORE_TAG(server),
+  ?DEBUG("mc_server init, Topology=~p, Addr=~p", [Topology, Addr]),
   process_flag(trap_exit, true),
   {Host, Port} = mc_util:parse_seed(Addr),
   PoolConf = form_pool_conf(TopologyOptions),
@@ -78,7 +81,8 @@ init([Topology, Addr, TopologyOptions, Wopts]) ->
   }}.
 
 
-terminate(_Reason, #state{topology = Topology}) ->
+terminate(Reason, #state{topology = Topology}) ->
+  ?DEBUG("mc_server terminate, Topology=~p, Reason=~p", [Topology, Reason]),
   mc_topology:drop_server(Topology, self()),
   ok.
 
@@ -169,7 +173,8 @@ init_pool(#state{host = Host, port = Port, pool_conf = Conf, worker_opts = Wopts
   WO = lists:append([{host, Host}, {port, Port}], Wopts),
   %{ok, Child} = mc_pool_sup:start_pool(Conf, WO),
   PoolArgs = [{worker_module, mc_worker}] ++ Conf,
-  {ok, Child} = poolboy:start_link(PoolArgs, WO),
+  ?DEBUG("mc_server init pool: ~p", [{PoolArgs, ?SECURE(WO)}]),
+  {ok, Child} = poolboy:start_link(PoolArgs, ?TAGGED(server, WO)),
   link(Child),
   Child.
 

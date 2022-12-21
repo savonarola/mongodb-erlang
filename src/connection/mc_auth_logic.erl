@@ -10,6 +10,7 @@
 -author("tihon").
 
 -include("mongo_protocol.hrl").
+-include("mongo_logging.hrl").
 
 -ifdef(TEST).
 -compile(export_all).
@@ -49,9 +50,11 @@ mongodb_cr_auth(Socket, Database, Login, Password, SetOpts) ->
 -spec scram_sha_1_auth(port(), binary(), binary(), binary(), module()) -> ok | {error, term()}.
 scram_sha_1_auth(Socket, Database, Login, Password, SetOpts) ->
   try
+    ?DEBUG("scram_first_step(~p)", [{Database, Login}]),
     scram_first_step(Socket, Database, Login, Password, SetOpts)
   catch
     Error:Reason:StackTrace ->
+      ?DEBUG("scram_first_step(~p) error: ~p", [{Database, Login}, {Error, Reason, StackTrace}]),
       erlang:raise(Error, {cannot_pass_auth, Reason}, StackTrace)
   end.
 
@@ -63,10 +66,13 @@ scram_first_step(Socket, Database, Login, Password, SetOpts) ->
   SASLStart = {<<"saslStart">>, 1, <<"mechanism">>, <<"SCRAM-SHA-1">>, <<"autoAuthorize">>, 1, <<"payload">>, Message},
   case mc_worker_api:sync_command(Socket, Database, SASLStart, SetOpts) of
       {true, Res} ->
+        ?DEBUG("scram_first_step(~p) result: ~p", [{Database, Login}, Res]),
         ConversationId = maps:get(<<"conversationId">>, Res, {}),
         Payload = maps:get(<<"payload">>, Res),
+        ?DEBUG("scram_second_step(~p)", [{Database, Login}]),
         scram_second_step(Socket, Database, Login, Password, Payload, ConversationId, RandomBString, FirstMessage, SetOpts);
       {false, Details} ->
+        ?DEBUG("scram_first_step(~p) failure: ~p", [{Database, Login}, Details]),
         {error, {'saslStart', Details}}
   end.
 
@@ -77,8 +83,11 @@ scram_second_step(Socket, Database, Login, Password, Payload, ConversationId, Ra
   SASLContinue = {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId, <<"payload">>, base64:encode(ClientFinalMessage)},
   case mc_worker_api:sync_command(Socket, Database, SASLContinue, SetOpts) of
     {true, Res} ->
+      ?DEBUG("scram_second_step(~p) result: ~p", [{Database, Login}, Res]),
+      ?DEBUG("scram_third_step(~p)", [{Database, Login}]),
       scram_third_step(base64:encode(Signature), Res, ConversationId, Socket, Database, SetOpts);
     {false, Details} ->
+      ?DEBUG("scram_second_step(~p) failure: ~p", [{Database, Login}, Details]),
       {error, {'saslContinue', Details}}
   end.
 
@@ -88,6 +97,7 @@ scram_third_step(ServerSignature, Response, ConversationId, Socket, Database, Se
   Done = maps:get(<<"done">>, Response, false),
   ParamList = parse_server_responce(base64:decode(Payload)),
   ServerSignature = mc_utils:get_value(<<"v">>, ParamList),
+  ?DEBUG("scram_forth_step(~p)", [Database]),
   scram_forth_step(Done, ConversationId, Socket, Database, SetOpts).
 
 %% @private
@@ -96,10 +106,13 @@ scram_forth_step(false, ConversationId, Socket, Database, SetOpts) ->
   SASLContinue = {<<"saslContinue">>, 1, <<"conversationId">>, ConversationId, <<"payload">>, <<>>},
   case mc_worker_api:sync_command(Socket, Database, SASLContinue, SetOpts) of
       {true, #{<<"done">> := true}} ->
+        ?DEBUG("scram_forth_step(~p) result: ok", [Database]),
         ok;
       {true, Res} ->
+        ?DEBUG("scram_forth_step(~p) final_saslContinue_not_done: ~p", [Database, Res]),
         {error, {'final_saslContinue_not_done', Res}};
       {false, Details} ->
+        ?DEBUG("scram_forth_step(~p) final_saslContinue: ~p", [Database, Details]),
         {error, {'final_saslContinue', Details}}
   end.
 

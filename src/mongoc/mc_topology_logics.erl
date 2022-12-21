@@ -10,6 +10,7 @@
 -author("tihon").
 
 -include("mongoc.hrl").
+-include("mongo_logging.hrl").
 
 -define(NON_SHARDED(ST),
   (ST =:= standalone orelse ST =:= rsPrimary orelse ST =:= rsSecondary orelse ST =:= rsArbiter orelse ST =:= rsOther orelse ST =:= rsGhost)).
@@ -126,13 +127,18 @@ init_seeds([], _, _, _) -> ok;
 init_seeds([Addr | Seeds], Tab, Topts, Wopts) ->
   Host = mc_utils:to_binary(Addr),
   Saved = ets:select(Tab, [{#mc_server{host = Host, _ = '_'}, [], ['$_']}]),
+  ?DEBUG("mc_topology_logics start seed: ~p", [{Saved, Host, Tab, Topts, ?SECURE(Wopts)}]),
   start_seed(Saved, Host, Tab, Topts, Wopts),
   init_seeds(Seeds, Tab, Topts, Wopts).
 
 validate_server_and_config(ConnectArgs, TopologyType, TopologySetName) ->
-  {ok, Conn} = mc_worker_api:connect(ConnectArgs),
+  ?DEBUG("Making test connection for server validation: ~p", [?SECURE(ConnectArgs)]),
+  {ok, Conn} = mc_worker_api:connect(?TAGGED(validate, ConnectArgs)),
+  ?DEBUG("Test connection succesfully created: ~p", [?SECURE(ConnectArgs)]),
   {true, IsMaster} = mc_worker_api:command(Conn, {isMaster, 1}),
+  ?DEBUG("Fetched IsMaster for ~p: ~p", [?SECURE(ConnectArgs), IsMaster]),
   mc_worker_api:disconnect(Conn),
+  ?DEBUG("Test connection closed: ~p", [?SECURE(ConnectArgs)]),
   ServerType = server_type(IsMaster),
   ServerSetName = maps:get(<<"setName">>, IsMaster, undefined),
 

@@ -11,6 +11,7 @@
 -behaviour(gen_server).
 
 -include("mongoc.hrl").
+-include("mongo_logging.hrl").
 
 %% API
 -export([start_link/3, drop_server/2, update_topology/1, get_state/1, get_pool/2, get_pool/4, get_pool/5, get_pool/1, disconnect/1, get_state_part/1]).
@@ -65,11 +66,13 @@ init([SeedsList, TopologyOptions, WorkerOptions]) ->
     end,
   ConnectTimeoutMS = proplists:get_value(connectTimeoutMS, TopologyOptions, 20000),
   ConnectArgs = mc_util:form_connect_args(Host, Port, ConnectTimeoutMS, WorkerOptions),
+  ?DEBUG("Starting server and config validation: ~p", [{?SECURE(ConnectArgs), ConnectTimeoutMS, ?SECURE(WorkerOptions)}]),  
   case mc_topology_logics:validate_server_and_config(ConnectArgs, Type, SetName) of
     ok ->
+      ?DEBUG("Server [~p] and config validation success", [?SECURE(ConnectArgs)]),  
       {ok, State};
-
     Error ->
+      ?DEBUG("Server [~p] and config validation error: ~p", [?SECURE(ConnectArgs), Error]),  
       {stop, Error}
   end.
 

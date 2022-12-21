@@ -11,6 +11,7 @@
 
 -include("mongo_types.hrl").
 -include("mongo_protocol.hrl").
+-include("mongo_logging.hrl").
 
 -define(NOT_MASTER_ERROR, 13435).
 -define(UNAUTHORIZED_ERROR(C), C =:= 10057; C =:= 16550).
@@ -47,6 +48,7 @@ process_reply(Doc, Command) -> %unknown result
   erlang:error({bad_command, Doc}, [Command]).
 
 read_one_sync(Socket, Database, Request, SetOpts) ->
+  ?DEBUG("sync read from Database=~p", [Database]),
   {0, Docs} = request_raw(Socket, Database, Request#'query'{batchsize = -1}, SetOpts),
   case Docs of
     [] -> #{};

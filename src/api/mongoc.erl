@@ -9,6 +9,7 @@
 
 -include("mongoc.hrl").
 -include("mongo_protocol.hrl").
+-include("mongo_logging.hrl").
 
 -export([
   connect/3,
@@ -32,6 +33,7 @@
 connect(Seeds, Options, WorkerOptions) ->
   ok = application:ensure_started(poolboy),
   ok = mc_pool_sup:ensure_started(),
+  ?DEBUG("Starting mc_topology with seeds ~p, opts: ~p, ~p", [Seeds, Options, ?SECURE(WorkerOptions)]),  
   mc_topology:start_link(Seeds, Options, WorkerOptions).
 
 -spec disconnect(pid()) -> ok.
