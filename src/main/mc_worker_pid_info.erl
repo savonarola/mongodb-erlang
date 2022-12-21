@@ -18,11 +18,15 @@
          set_info/2,
          discard_info/1,
          get_protocol_type/1,
-         install_mc_worker_info/3]).
+         install_mc_worker_info/3,
+         get_mc_worker_pid_info_tab_name/0]).
 
 -define(CLEAN_TABLE_PERIOD_MINS, 30).
 -define(CLEAN_TABLE_MESSAGE, clean_table).
 -define(MC_WORKER_PID_INFO_TAB_NAME, mc_worker_pid_info_tab).
+
+get_mc_worker_pid_info_tab_name() ->
+    ?MC_WORKER_PID_INFO_TAB_NAME .
 
 -spec start_link() -> {ok, pid()}.
 start_link() ->
@@ -98,12 +102,18 @@ get_protocol_type(MCWorkerPID) ->
             legacy
     end.
 
-%% This process should be called from mc_worker processes to install their info
+%% This function should be called from mc_worker processes to install their info
 %% in the ?MC_WORKER_PID_INFO_TAB_NAME ETS table
 install_mc_worker_info(Socket, NetModule, Database) ->
     try
         ProtocolType = detect_protocol_type(Socket, NetModule, Database),
-        mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType}),
+        try
+            mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType})
+        catch
+            W:R ->
+                logger:warning("Warning: Cannot install mc_worker_info. This might make the driver non-functional with MongoDB version 5.1+. ~p",
+                               [{W, R}])
+        end,
         ok
     catch
         What:Reason ->
