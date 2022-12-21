@@ -3,18 +3,30 @@
  [{"3.0.16", [
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
-    {load_module, mongo_api, brutal_purge, soft_purge, []}
+    {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []}
   ]},
   {"3.0.15", [
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {"3.0.14", [
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {"3.0.13", [
@@ -23,6 +35,8 @@
     {load_module, mongo_api, brutal_purge, soft_purge, []},
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mc_util, brutal_purge, soft_purge, []}
   ]},
@@ -32,6 +46,7 @@
     {load_module, mongo_api, brutal_purge, soft_purge, []},
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []}
@@ -94,17 +109,29 @@
  [{"3.0.16", [
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
-    {load_module, mongo_api, brutal_purge, soft_purge, []}
+    {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []}
   ]},
   {"3.0.15", [
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []}
   ]},
   {"3.0.14", [
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
+    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mongoc, brutal_purge, soft_purge, []}
   ]},
@@ -114,6 +141,8 @@
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
+    {load_module, mc_topology, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mc_util, brutal_purge, soft_purge, []}
   ]},
@@ -123,6 +152,7 @@
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []}
