@@ -59,7 +59,6 @@
     {load_module, mc_monitor, brutal_purge, soft_purge, []},
     {load_module, mc_server, brutal_purge, soft_purge, []},
     {load_module, mc_utils, brutal_purge, soft_purge, []},
-    {load_module, mc_util, brutal_purge, soft_purge, []},
     {load_module, mc_topology_logics, brutal_purge, soft_purge, []},
     {load_module, mc_topology, brutal_purge, soft_purge, []},
     {load_module, mc_worker, brutal_purge, soft_purge, []},
