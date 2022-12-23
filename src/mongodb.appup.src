@@ -66,7 +66,6 @@
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
     {load_module, mongoc, brutal_purge, soft_purge, []},
-    {update, mc_super_sup, supervisor},
     {delete_module, mc_util},
     {delete_module, mc_worker_pid_info}
   ]},
@@ -87,7 +86,6 @@
     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
     {load_module, mongo_api, brutal_purge, soft_purge, []},
     {load_module, mongoc, brutal_purge, soft_purge, []},
-    {update, mc_super_sup, supervisor},
     {delete_module, mc_worker_pid_info}
   ]},
   {<<".*">>, []}
