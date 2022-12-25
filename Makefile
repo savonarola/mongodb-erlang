@@ -21,12 +21,18 @@ clean-docs:
 tests: app eunit ct
 
 eunit:
-	@$(REBAR) as test eunit
+	$(REBAR) as test eunit
 
 ct: app
-	@$(REBAR) as test ct
+	$(REBAR) as test ct
 
-dialyzer:
-	@$(REBAR) dialyzer
+# Dialyzer.
+.mongodb-erlang.plt: 
+	dialyzer --build_plt --output_plt .mongodb-erlang.plt \
+		--apps erts kernel stdlib sasl inets crypto public_key ssl mnesia syntax_tools asn1
+
+dialyzer: .mongodb-erlang.plt
+	dialyzer -I include -I _build/default/lib/ --src -r src --plt .mongodb-erlang.plt --no_native \
+		-Werror_handling -Wunmatched_returns
 
 .PHONY: app clean docs clean-docs tests eunit ct dialyzer

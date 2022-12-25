@@ -28,7 +28,12 @@ connect_to_database(Conf) ->
 %% Get server version. This is need to choose default authentication method.
 -spec get_version(port(), binary(), module()) -> float().
 get_version(Socket, Database, SetOpts) ->
-  {true, #{<<"version">> := Version}} = mc_worker_api:sync_command(Socket, Database, {<<"buildinfo">>, 1}, SetOpts),
+  {true, #{<<"version">> := Version}} =
+    mc_worker_api:sync_command(Socket,
+                               Database,
+                               {<<"buildinfo">>, 1},
+                               SetOpts,
+                               mc_utils:use_legacy_protocol(self())),
   {VFloat, _} = string:to_float(binary_to_list(Version)),
   VFloat.
 
@@ -41,11 +46,13 @@ encode_request(Database, Request) ->
 decode_responses(Data) ->
   decode_responses(Data, []).
 
--spec get_resp_fun(#query{} | #getmore{} | #insert{} | #update{} | #delete{}, pid()) -> fun().
+-spec get_resp_fun(#query{} | #getmore{} | #insert{} | #update{} | #delete{} | #op_msg_command{} | #op_msg_write_op{}, pid()) -> fun().
 get_resp_fun(Read, From) when is_record(Read, query); is_record(Read, getmore) ->
   fun(Response) -> gen_server:reply(From, Response) end;
 get_resp_fun(Write, From) when is_record(Write, insert); is_record(Write, update); is_record(Write, delete) ->
-  process_write_response(From).
+  process_write_response(From);
+get_resp_fun(OpMsg, From) when is_record(OpMsg, op_msg_write_op); is_record(OpMsg, op_msg_command) ->
+  process_op_msg_response(From).
 
 -spec process_responses(Responses :: list(), RequestStorage :: map()) -> UpdStorage :: map().
 process_responses(Responses, RequestStorage) ->
@@ -63,8 +70,7 @@ process_responses(Responses, RequestStorage) ->
       end
     end, RequestStorage, Responses).
 
--spec make_request(pid(), atom(), mc_worker_api:database(), mongo_protocol:message()) ->
-  {ok | {error, any()}, integer(), pos_integer()}.
+-spec make_request(any(), atom(), mc_worker_api:database(), mongo_protocol:message()) -> {ok | {error, any()}, integer(), pos_integer()}.
 make_request(Socket, NetModule, Database, Request) ->
   {Packet, Id} = encode_request(Database, Request),
   {NetModule:send(Socket, Packet), byte_size(Packet), Id}.
@@ -121,6 +127,11 @@ process_write_response(From) ->
           Code -> gen_server:reply(From, {error, {write_failure, Code, String}})
         end
     end
+  end.
+
+process_op_msg_response(From) ->
+  fun(#op_msg_response{} = OpMsg) ->
+          gen_server:reply(From, OpMsg)
   end.
 
 may_ipv6(Host, Opts) when tuple_size(Host) =:= 4 ->

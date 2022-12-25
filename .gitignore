@@ -5,3 +5,4 @@ _build
 variables-ct*
 *.iml
 rebar.lock
+test/replica_set_setup/data/replica_set_initialized

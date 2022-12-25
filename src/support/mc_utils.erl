@@ -25,7 +25,9 @@
   random_binary/1,
   hmac/2,
   is_proplist/1,
-  to_binary/1]).
+  to_binary/1,
+  use_legacy_protocol/1,
+  get_connection_pid/1]).
 
 get_value(Key, List) -> get_value(Key, List, undefined).
 
@@ -67,6 +69,24 @@ get_timeout() ->
     {ok, Time} -> Time;
     undefined -> infinity
   end.
+
+use_legacy_protocol(Connection) ->
+    %% Latest MongoDB version that supported the non-op-msg based protocol was
+    %% 5.0.x (at the time of writing 5.0.14). The non-op-msg based protocol was
+    %% removed in MongoDB version 5.1.0. See
+    %% https://www.mongodb.com/docs/manual/legacy-opcodes/
+    case mc_worker_pid_info:get_protocol_type(Connection) of
+        legacy -> 
+            true;
+        op_msg ->
+            false
+    end.
+
+get_connection_pid(Connection) when is_pid(Connection) ->
+    Connection;
+get_connection_pid(#{connection_pid := Pid}) ->
+    Pid.
+
 
 hmac(One, Two) -> crypto:mac(hmac, sha, One, Two).
 

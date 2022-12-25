@@ -1,31 +1,23 @@
-name: Erlang CI
+name: Run Tests with Different MongoDB Versions
 
 on:
   push:
+    branches: [ master ]
   pull_request:
+    branches: [ master ]
 
 jobs:
-
   test:
+    runs-on: ubuntu-20.04
+    name: Erlang/OTP ${{matrix.otp}}
     strategy:
       matrix:
-        otp:
-          - 24
-          - 23
-
-    runs-on: ubuntu-20.04
-    services:
-      mongodb:
-        image: mongo:5
-        ports:
-        - 27017:27017
-        
+        otp: ['24.3.4.6']
+        rebar3: ['3.14.3']
     steps:
-    - uses: actions/checkout@v2
-    - uses: erlef/setup-beam@v1
-      with:
-        otp-version: ${{matrix.otp}}
-    - name: test
-      run: make tests
-    - name: edoc
-      run: make docs
+      - uses: actions/checkout@v3
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{matrix.otp}}
+          rebar3-version: ${{matrix.rebar3}}
+      - run: ./test/mongodb_in_docker_tests.sh

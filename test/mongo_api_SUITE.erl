@@ -4,6 +4,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-compile(nowarn_export_all).
 -compile(export_all).
 
 all() ->
@@ -23,9 +24,22 @@ end_per_suite(_Config) ->
   ok.
 
 init_per_testcase(Case, Config) ->
-  {ok, Pid} = mongo_api:connect(single, ["localhost:27017"],
-    [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}]),
-  [{connection, Pid}, {collection, mc_test_utils:collection(Case)} | Config].
+  Login = application:get_env(mongodb, test_auth_login, undefined),
+  Password = application:get_env(mongodb, test_auth_password, undefined),
+  AuthConfig =
+    case {Login, Password} of
+        {undefined, _} -> [];
+        {_, undefined} -> [];
+        _ -> [{login, erlang:atom_to_binary(Login)}, {password, erlang:atom_to_binary(Password)}]
+    end,
+  {SeedType, URLs} =
+    case application:get_env(mongodb, test_mongo_api_connection_type, single) of
+        single -> {single, ["localhost:27017"]};
+        replica_set -> {{rs,<<"my-mongo-set">>},["localhost:30001","localhost:30002","localhost:30003"]}
+    end,
+  {ok, Pid} = mongo_api:connect(SeedType, URLs,
+    [{pool_size, 1}, {max_overflow, 0}], [{database, ?config(database, Config)}] ++ AuthConfig),
+  [{connection, Pid}, {collection, mc_test_utils:collection(?MODULE, Case)} | Config].
 
 end_per_testcase(_Case, Config) ->
   Connection = ?config(connection, Config),
@@ -35,11 +49,18 @@ end_per_testcase(_Case, Config) ->
 
 %% Tests
 ensure_index_test(Config) ->
-  Pid = ?config(connection, Config),
-  Collection = ?config(collection, Config),
-  ok = mongo_api:ensure_index(Pid, Collection, #{<<"key">> => {<<"cid">>, 1, <<"ts">>, 1}}),
-  ok = mongo_api:ensure_index(Pid, Collection, {<<"key">>, {<<"z_first">>, 1, <<"a_last">>, 1}}),
-  Config.
+    {ok, MCWorkerConnection} = mc_worker:start_link([{database, ?config(database, Config)}, {w_mode, safe}]),
+    case mc_utils:use_legacy_protocol(MCWorkerConnection) of
+        true ->
+            Pid = ?config(connection, Config),
+            Collection = ?config(collection, Config),
+            ok = mongo_api:ensure_index(Pid, Collection, #{<<"key">> => {<<"cid">>, 1, <<"ts">>, 1}}),
+            ok = mongo_api:ensure_index(Pid, Collection, {<<"key">>, {<<"z_first">>, 1, <<"a_last">>, 1}}),
+            Config;
+        false ->
+            ct:log("The ensure_index function does not work when one have specified application:set_env(mongodb, use_legacy_protocol, false)."),
+            Config
+    end.
 
 count_test(Config) ->
   Collection = ?config(collection, Config),

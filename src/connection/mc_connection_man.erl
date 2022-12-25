@@ -18,15 +18,27 @@
 %% API
 -export([request_worker/2, process_reply/2]).
 -export([read/2, read_one/2, read_one_sync/4]).
+-export([op_msg/2, op_msg_sync/4, op_msg_read_one/2, op_msg_raw_result/2, request_raw_no_parse/4]).
 
--spec read(pid() | atom(), query()) -> [] | pid().
+-spec read(pid() | atom(), query()) -> [] | {ok, pid()}.
 read(Connection, Request = #'query'{collection = Collection, batchsize = BatchSize}) ->
-  case request_worker(Connection, Request) of
-    {_, []} ->
-      [];
-    {Cursor, Batch} ->
-      mc_cursor:start(Connection, Collection, Cursor, BatchSize, Batch)
-  end.
+    read(Connection, Request, Collection, BatchSize);
+read(Connection, #'op_msg_command'{command_doc = ([{_, Collection} | _ ] = Fields)} = Request)  ->
+    BatchSize = case lists:keyfind(<<"batchSize">>, 1, Fields) of
+                    {_, Size} -> Size;
+                    false -> 101
+                end,
+    read(Connection, Request, Collection, BatchSize).
+
+read(Connection, Request, Collection, BatchSize) ->
+    case request_worker(Connection, Request) of
+        {_, []} ->
+            [];
+        {Cursor, Batch} ->
+            mc_cursor:start(Connection, Collection, Cursor, BatchSize, Batch);
+        X ->
+            erlang:error({error_unexpected_response, X})
+    end.
 
 -spec read_one(pid() | atom(), query()) -> undefined | map().
 read_one(Connection, Request) ->
@@ -36,10 +48,46 @@ read_one(Connection, Request) ->
     [Doc | _] -> Doc
   end.
 
--spec request_worker(pid(), mongo_protocol:message()) -> ok | {non_neg_integer(), [map()]}.
+op_msg_raw_result(Connection, OpMsg) ->
+    Timeout = mc_utils:get_timeout(),
+    FromServer = gen_server:call(Connection, OpMsg, Timeout),
+    case FromServer of
+        #op_msg_response{response_doc =
+                         (#{<<"ok">> := 1.0} = Res)} ->
+            Res;
+        _ ->
+            erlang:error({error, FromServer})
+    end.
+
+op_msg(Connection, OpMsg) ->
+  Doc = request_worker(Connection, OpMsg),
+  process_reply(Doc, OpMsg).
+
+op_msg_read_one(Connection, OpMsg) ->
+  Timeout = mc_utils:get_timeout(),
+  Response = gen_server:call(Connection, OpMsg, Timeout),
+  case Response of
+      #op_msg_response{response_doc =
+                       #{<<"ok">> := 1.0,
+                         <<"cursor">>:=
+                         #{<<"firstBatch">>:=[Doc],
+                           <<"id">>:=0}
+                        }} ->
+          Doc;
+      #op_msg_response{response_doc =
+                       #{<<"ok">> := 1.0}} ->
+          undefined;
+      #op_msg_response{response_doc = Doc} ->
+          erlang:error({error, Doc});
+      _ ->
+          erlang:error({error_unexpected_response, Response})
+  end.
+
+-spec request_worker(pid(), mongo_protocol:message()) -> ok | {non_neg_integer(), [map()]} | map().
 request_worker(Connection, Request) ->  %request to worker
   Timeout = mc_utils:get_timeout(),
-  reply(gen_server:call(Connection, Request, Timeout)).
+  FromServer = gen_server:call(Connection, Request, Timeout),
+  reply(FromServer).
 
 process_reply(Doc = #{<<"ok">> := N}, _) when is_number(N) ->   %command succeed | failed
   {N == 1, maps:remove(<<"ok">>, Doc)};
@@ -53,6 +101,8 @@ read_one_sync(Socket, Database, Request, SetOpts) ->
     [Doc | _] -> Doc
   end.
 
+op_msg_sync(Socket, Database, Request, SetOpts) ->
+  request_raw(Socket, Database, Request, SetOpts).
 
 %% @private
 reply(ok) -> ok;
@@ -64,7 +114,13 @@ reply(#reply{cursornotfound = false, queryerror = true} = Reply) ->
 reply(#reply{cursornotfound = true, queryerror = false} = Reply) ->
   erlang:error({bad_cursor, Reply#reply.cursorid});
 reply({error, Error}) ->
-  process_error(error, Error).
+  process_error(error, Error);
+reply(#op_msg_response{response_doc = (#{<<"cursor">>:=#{<<"firstBatch">>:=Batch,<<"id">>:=Id}} = Doc)}) when map_get(<<"ok">>, Doc) == 1 -> 
+  {Id, Batch};
+reply(#op_msg_response{response_doc = Document}) when map_get(<<"ok">>, Document) == 1 ->
+  Document;
+reply(Resp) ->
+  erlang:error({error_cannot_parse_response, Resp}).
 
 %% @private
 -spec process_error(atom() | integer(), term()) -> no_return().
@@ -76,7 +132,7 @@ process_error(_, Doc) ->
   erlang:error({bad_query, Doc}).
 
 %% @private
--spec request_raw(port(), mc_worker_api:database(), mongo_protocol:message(), module()) ->
+-spec request_raw(any(), mc_worker_api:database(), mongo_protocol:message(), module()) ->
   ok | {non_neg_integer(), [map()]}.
 request_raw(Socket, Database, Request, NetModule) ->
   Timeout = mc_utils:get_timeout(),
@@ -84,8 +140,17 @@ request_raw(Socket, Database, Request, NetModule) ->
   {ok, _, _} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
   Responses = recv_all(Socket, Timeout, NetModule),
   ok = set_opts(Socket, NetModule, true),
-  {_, Reply} = hd(Responses),
+  {_Id, Reply} = hd(Responses),
   reply(Reply).
+
+%% @private
+request_raw_no_parse(Socket, Database, Request, NetModule) ->
+  Timeout = mc_utils:get_timeout(),
+  ok = set_opts(Socket, NetModule, false),
+  {ok, _, _} = mc_worker_logic:make_request(Socket, NetModule, Database, Request),
+  Result = recv_all(Socket, Timeout, NetModule),
+  ok = set_opts(Socket, NetModule, true),
+  Result.
 
 %% @private
 set_opts(Socket, ssl, Value) ->

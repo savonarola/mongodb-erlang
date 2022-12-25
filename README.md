@@ -33,6 +33,9 @@ Start all applications, needed by mongodb
 __Important__: 
 `mongoc` API was changed in `3.0.0`.  
 `mc_cursor` API was changed in `3.0.0.`  
+`ensure_index` function in `mc_worker_api` and mongo_api should not be used in
+`3.0.16+`. See the documentation for these functions for more info. Use the
+`command` functions to send a `createIndexes` command instead.
 
 This driver has two api modules - `mc_worker_api` and `mongo_api`. 
 `mc_worker_api` works directly with one connection, while all `mongo_api`
@@ -42,8 +45,18 @@ If you are choosing between using
 [mongos](https://docs.mongodb.com/manual/reference/program/mongos/) and
 using mongo shard with `mongo_api` - prefer mongos and use `mc_worker_api`.
 
+By default, this driver tries to automatically detect which MongoDB protocol to
+use (the legacy protocol that existed before the `OP_MSG` package was
+introduced or the modern protocol which is based on `OP_MSG` packages). One can
+force the driver to use the legacy protocol or the OP_MSG based protocol by
+setting the application setting `use_legacy_protocol` to `true` or `false` (for
+example by calling `application:set_env(mongodb, use_legacy_protocol, false)`).
+Notice that support for the legacy protocol has been removed in MongoDB 5.1+.
+
 mc_worker_api -- direct connection client
 ---------------------------------
+
+
 
 ### Connecting
 To connect to a database `test` on mongodb server listening on 
