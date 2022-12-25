@@ -43,7 +43,6 @@ disconnect(Worker) ->
   gen_server:cast(Worker, halt).
 
 init(Options) ->
-  proc_lib:init_ack({ok, self()}),
   case mc_worker_logic:connect_to_database(Options) of
     {ok, Socket} ->
       ConnState = form_state(Options),
@@ -56,8 +55,10 @@ init(Options) ->
                                                      NetModule,
                                                      ConnState#conn_state.database) of
         ok ->
+          proc_lib:init_ack({ok, self()}),
           case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
             ok ->
+              maybe_reply_parent(Options, connect_complete),
               gen_server:enter_loop(?MODULE, [],
                   #state{socket = Socket,
                          conn_state = ConnState,
@@ -68,10 +69,12 @@ init(Options) ->
               maybe_reply_parent(Options, Error)
           end;
         Error ->
+          proc_lib:init_ack({ok, self()}),
           %% Note: the socket is closed by `install_mc_worker_info', so it won't leak here.
           maybe_reply_parent(Options, Error)
       end;
     Error ->
+      proc_lib:init_ack({ok, self()}),
       maybe_reply_parent(Options, Error)
   end.
 
