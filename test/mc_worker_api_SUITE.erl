@@ -17,7 +17,8 @@ all() ->
     aggregate_sort_and_limit,
     insert_map,
     find_sort_skip_limit_test,
-    find_one_test
+    find_one_test,
+    run_map_command
   ].
 
 init_per_suite(Config) ->
@@ -388,3 +389,52 @@ update(Config) ->
     <<"ratings">> := [#{<<"by">> := "ijk", <<"rating">> := 2}],
     <<"expired">> := true} = Res4,
   Config.
+
+
+%% One should be able to specify a command as a map.
+run_map_command(Config) ->
+  Connection = ?config(connection, Config),
+  Collection = ?config(collection, Config),
+  %% When mc_worker_api:command translates the map to a  BSON document, the
+  %% command name key need to be placed first.
+  %%
+  %% Perform a few commands so we can be relativly sure that the command key
+  %% will not be placed first in at least one of them when doing maps:to_list/1
+  try
+      HelloCommand = #{
+                       <<"hello">> => 1,
+                       <<"comment">> => <<"hello command comment">>,
+                       <<"saslSupportedMechs">> => <<"<db.username_not_existing>">>
+                      },
+      {true, #{}} = mc_worker_api:command(Connection, HelloCommand)
+  catch
+      _:_ ->
+          %% Assume it is an old version that does not support the hello command
+          IsMasterCommand = #{
+                           <<"isMaster">> => 1,
+                           <<"comment">> => <<"hello command comment">>,
+                           <<"saslSupportedMechs">> => <<"<db.username_not_existing>">>
+                          },
+          {true, #{}} = mc_worker_api:command(Connection, IsMasterCommand)
+  end,
+  InsertCommand = #{
+                    <<"insert">> => Collection,
+                    <<"documents">> => [#{<<"field1">> => 1}, #{<<"field1">> => 1}],
+                    <<"ordered">> => true,
+                    <<"bypassDocumentValidation">> => false,
+                    <<"comment">> => <<"test insert command">>
+                   },
+  {true, #{<<"n">>:=2}} = mc_worker_api:command(Connection, InsertCommand),
+  DeleteCommand = #{
+                    <<"delete">> => Collection,
+                    <<"deletes">> => [
+                                      #{
+                                        <<"q">> => #{field1 => 1},
+                                        <<"limit">> => 0
+                                       }
+                                     ],
+                    <<"comment">> => <<"This is a comment">>,
+                    <<"ordered">> => true 
+                   },
+  {true,#{<<"n">>:=2}} = mc_worker_api:command(Connection, DeleteCommand),
+  ok.

@@ -21,3 +21,4 @@ jobs:
           otp-version: ${{matrix.otp}}
           rebar3-version: ${{matrix.rebar3}}
       - run: ./test/mongodb_in_docker_tests.sh
+      - run: rebar3 xref

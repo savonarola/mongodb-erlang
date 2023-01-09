@@ -384,7 +384,7 @@ map_to_command(Command) ->
         {value, Key} ->
             CommandValue = maps:get(Key, Command),
             NewCommand1 = maps:remove(Key, Command),
-            NewCommand2 = maps:to_list(NewCommand1, NewCommand1),
+            NewCommand2 = maps:to_list(NewCommand1),
             [{Key, CommandValue} | NewCommand2];
         false ->
             maps:to_list(Command)
@@ -543,6 +543,7 @@ is_command_bin(<<"dropAllRolesFromDatabase">>) -> true;
 is_command_bin(<<"grantPrivilegesToRole">>) -> true;
 is_command_bin(<<"grantRolesToRole">>) -> true;
 is_command_bin(<<"invalidateUserCache">>) -> true;
+is_command_bin(<<"isMaster">>) -> true;
 is_command_bin(<<"revokePrivilegesFromRole">>) -> true;
 is_command_bin(<<"revokeRolesFromRole">>) -> true;
 is_command_bin(<<"rolesInfo">>) -> true;
