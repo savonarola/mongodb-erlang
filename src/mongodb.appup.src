@@ -26,7 +26,7 @@
     {load_module, mongoc, brutal_purge, soft_purge, []},
     {apply, {mc_super_sup, ensure_mc_worker_pid_info_server, []}}
   ]},
-  {<<"3.0.[0-9]+">>, [
+  {<<"3.0.1[1-7]">>, [
     {add_module, mc_worker_pid_info},
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_connection_man, brutal_purge, soft_purge, []},
@@ -74,7 +74,7 @@
     {delete_module, mc_util},
     {delete_module, mc_worker_pid_info}
   ]},
-  {<<"3.0.[0-9]+">>, [
+  {<<"3.0.1[1-7]">>, [
     {load_module, mc_auth_logic, brutal_purge, soft_purge, []},
     {load_module, mc_connection_man, brutal_purge, soft_purge, []},
     {load_module, mc_cursor, brutal_purge, soft_purge, []},
