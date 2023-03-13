@@ -144,7 +144,7 @@ delete_limit(Connection, Coll, Selector, N) ->
                                  extra_fields = [{<<"writeConcern">>, {<<"w">>, 1}}],
                                  documents_name = <<"deletes">>,
                                  documents = [#{<<"q">> => Selector,
-                                                <<"limit">> => 1}]},
+                                                <<"limit">> => N}]},
           mc_connection_man:op_msg(Connection, Msg)
   end.
 

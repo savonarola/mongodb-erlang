@@ -144,6 +144,13 @@ insert_and_delete(Config) ->
 
   mc_worker_api:delete_one(Connection, Collection, #{}),
   3 = mc_worker_api:count(Connection, Collection, #{}),
+
+  mc_worker_api:delete_limit(Connection, Collection, #{}, 1),
+  2 = mc_worker_api:count(Connection, Collection, #{}),
+
+  mc_worker_api:delete(Connection, Collection, #{}),
+  0 = mc_worker_api:count(Connection, Collection, #{}),
+
   Config.
 
 insert_map(Config) ->
