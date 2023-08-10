@@ -18,7 +18,7 @@
          set_info/2,
          discard_info/1,
          get_protocol_type/1,
-         install_mc_worker_info/3,
+         install_mc_worker_info/4,
          get_mc_worker_pid_info_tab_name/0]).
 
 -define(CLEAN_TABLE_PERIOD_MINS, 30).
@@ -74,7 +74,7 @@ delete_pid_if_dead(Pid) ->
 get_info(MCWorkerPID) ->
     try
         case ets:lookup(?MC_WORKER_PID_INFO_TAB_NAME, MCWorkerPID) of
-            [{MCWorkerPID, InfoMap}] -> 
+            [{MCWorkerPID, InfoMap}] ->
                 {ok, InfoMap};
             [] ->
                 not_found
@@ -104,9 +104,10 @@ get_protocol_type(MCWorkerPID) ->
 
 %% This function should be called from mc_worker processes to install their info
 %% in the ?MC_WORKER_PID_INFO_TAB_NAME ETS table
-install_mc_worker_info(Socket, NetModule, Database) ->
+install_mc_worker_info(Socket, NetModule, Database, Opts) ->
+    UseLegacyProtocol = maps:get(use_legacy_protocol, Opts),
     try
-        ProtocolType = detect_protocol_type(Socket, NetModule, Database),
+        ProtocolType = detect_protocol_type(UseLegacyProtocol, Socket, NetModule, Database),
         try
             mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType})
         catch
@@ -121,10 +122,13 @@ install_mc_worker_info(Socket, NetModule, Database) ->
             {error, {What, Reason}}
     end.
 
-detect_protocol_type(Socket, NetModule, Database) ->
-    case application:get_env(mongodb, use_legacy_protocol, auto) of
-        true -> legacy;
-        false -> op_msg; %% modern protocol based on the op_msg package
+detect_protocol_type(UseLegacyProtocol, Socket, NetModule, Database) ->
+    case UseLegacyProtocol of
+        true ->
+            legacy;
+        false ->
+            %% modern protocol based on the op_msg package
+            op_msg;
         auto ->
             %% Automatically detect which protocol to use. We send a
             %% command using the old protocol. If we get back error code

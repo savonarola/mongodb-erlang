@@ -1,6 +1,19 @@
 %% -*- mode: erlang -*-
-{"3.0.19", [
+{"3.0.21", [
+   {"3.0.20", [
+    {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []}
+   ]},
+   {"3.0.19", [
+    {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+    {load_module, mc_worker_api, brutal_purge, soft_purge, []},
+    {load_module, mc_utils, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []}
+   ]},
    {"3.0.18", [
+    {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_utils, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []}
    ]},
    {<<"3.0.[0-7]">>, [
@@ -49,7 +62,20 @@
   {<<".*">>, []}
  ],
  [
+   {"3.0.20", [
+    {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []}
+   ]},
+   {"3.0.19", [
+     {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+     {load_module, mc_worker_api, brutal_purge, soft_purge, []},
+     {load_module, mc_utils, brutal_purge, soft_purge, []},
+     {load_module, mc_worker, brutal_purge, soft_purge, []}
+   ]},
    {"3.0.18", [
+    {load_module, mc_worker_pid_info, brutal_purge, soft_purge, []},
+    {load_module, mc_worker, brutal_purge, soft_purge, []},
+    {load_module, mc_utils, brutal_purge, soft_purge, []},
     {load_module, mc_worker_api, brutal_purge, soft_purge, []}
    ]},
    {<<"3.0.[0-7]">>, [

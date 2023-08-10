@@ -6,6 +6,7 @@ LOGIN='myuser'
 PASSWORD='mypassword'
 
 test_with_legacy_on () {
+    local MONGO_VSN="$2"
     if [ -n "$3" ]
     then
         docker run \
@@ -14,14 +15,15 @@ test_with_legacy_on () {
             --name mongo_test \
             -e MONGO_INITDB_ROOT_USERNAME="$LOGIN" \
             -e MONGO_INITDB_ROOT_PASSWORD="$PASSWORD" \
-            mongo:$2
+            mongo:$MONGO_VSN
         # Apparently it takes a while for the password to be installed
         sleep 4
     else
-        docker run -p 27017:27017 --rm -d --name mongo_test mongo:$2
+        docker run -p 27017:27017 --rm -d --name mongo_test mongo:$MONGO_VSN
         sleep 1
     fi
     export ERL_FLAGS="-mongodb use_legacy_protocol $1 $3"
+    export MONGO_VSN
     rebar3 ct
     rebar3 eunit
     docker stop mongo_test
