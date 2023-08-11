@@ -104,10 +104,10 @@ get_protocol_type(MCWorkerPID) ->
 
 %% This function should be called from mc_worker processes to install their info
 %% in the ?MC_WORKER_PID_INFO_TAB_NAME ETS table
-install_mc_worker_info(Socket, NetModule, Database, Opts) ->
-    UseLegacyProtocol = maps:get(use_legacy_protocol, Opts),
+install_mc_worker_info(ConnectionOpts, NetModule, Database, ProtoOpts) ->
+    UseLegacyProtocol = maps:get(use_legacy_protocol, ProtoOpts),
     try
-        ProtocolType = detect_protocol_type(UseLegacyProtocol, Socket, NetModule, Database),
+        ProtocolType = detect_protocol_type(UseLegacyProtocol, ConnectionOpts, NetModule, Database),
         try
             mc_worker_pid_info:set_info(self(), #{protocol_type => ProtocolType})
         catch
@@ -118,11 +118,10 @@ install_mc_worker_info(Socket, NetModule, Database, Opts) ->
         ok
     catch
         What:Reason ->
-            NetModule:close(Socket),
             {error, {What, Reason}}
     end.
 
-detect_protocol_type(UseLegacyProtocol, Socket, NetModule, Database) ->
+detect_protocol_type(UseLegacyProtocol, ConnectionOpts, NetModule, Database) ->
     case UseLegacyProtocol of
         true ->
             legacy;
@@ -130,23 +129,25 @@ detect_protocol_type(UseLegacyProtocol, Socket, NetModule, Database) ->
             %% modern protocol based on the op_msg package
             op_msg;
         auto ->
-            %% Automatically detect which protocol to use. We send a
-            %% command using the old protocol. If we get back error code
-            %% 352* (UnsupportedOpQueryCommand), we are in a version that
-            %% don't support the legacy protocol so we use the op_msg based
-            %% protocol instead.
+            %% Automatically detect which protocol to use. We send a `hello' command using
+            %% the new protocol. If we have our connection closed by the server, it means
+            %% it doesn't support the new protocol.
+            %% See also:
             %% * https://github.com/mongodb/mongo/blob/5e494138af456f42381ad08748cc7fbc4ace7a60/src/mongo/base/error_codes.yml
-            Command = bson:document([{<<"notExistingCommandXyzErlang">>, <<"void">>}]),
-            Request = #'query'{
-                         collection = <<"$cmd">>,
-                         selector = Command,
-                         batchsize = -1
-                        },
-            Response = mc_connection_man:request_raw_no_parse(Socket, Database, Request, NetModule),
-            case Response of
-                [{_, #reply{documents = [#{<<"code">> := 352, <<"ok">> := 0.0}|_]}}|_] ->
+            %% * https://www.mongodb.com/docs/manual/reference/command/hello/#mongodb-dbcommand-dbcmd.hello
+            %% * https://www.mongodb.com/docs/manual/reference/mongodb-wire-protocol/#std-label-wire-op-msg
+            {ok, Socket} = mc_worker_logic:connect_to_database(ConnectionOpts),
+            Command = bson:fields({hello, 1}),
+            Request = #op_msg_command{command_doc = Command, database = Database},
+            try mc_connection_man:request_raw_no_parse(Socket, Database, Request, NetModule) of
+                [{_, #op_msg_response{response_doc = #{<<"ok">> := _}}} | _] ->
                     op_msg;
                 _ErrorResponse ->
                     legacy
+            catch
+                _:_ ->
+                    legacy
+            after
+                NetModule:close(Socket)
             end
     end.

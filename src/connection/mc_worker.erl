@@ -54,7 +54,7 @@ init(Options) ->
       DefaultUseLegacyProtocol = application:get_env(mongodb, use_legacy_protocol, auto),
       UseLegacyProtocol = mc_utils:get_value(use_legacy_protocol, Options, DefaultUseLegacyProtocol),
       ProtoOpts = #{use_legacy_protocol => UseLegacyProtocol},
-      case mc_worker_pid_info:install_mc_worker_info(Socket,
+      case mc_worker_pid_info:install_mc_worker_info(Options,
                                                      NetModule,
                                                      ConnState#conn_state.database,
                                                      ProtoOpts) of
