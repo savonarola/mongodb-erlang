@@ -51,9 +51,13 @@ init(Options) ->
       Login = mc_utils:get_value(login, Options),
       Password = mc_utils:get_value(password, Options),
       NextReqFun = mc_utils:get_value(next_req_fun, Options, fun() -> ok end),
-      case mc_worker_pid_info:install_mc_worker_info(Socket,
+      DefaultUseLegacyProtocol = application:get_env(mongodb, use_legacy_protocol, auto),
+      UseLegacyProtocol = mc_utils:get_value(use_legacy_protocol, Options, DefaultUseLegacyProtocol),
+      ProtoOpts = #{use_legacy_protocol => UseLegacyProtocol},
+      case mc_worker_pid_info:install_mc_worker_info(Options,
                                                      NetModule,
-                                                     ConnState#conn_state.database) of
+                                                     ConnState#conn_state.database,
+                                                     ProtoOpts) of
         ok ->
           proc_lib:init_ack({ok, self()}),
           case auth_if_credentials(Socket, ConnState, NetModule, Login, Password) of
@@ -90,7 +94,7 @@ handle_call(#ensure_index{collection = Coll, index_spec = IndexSpec}, _, State) 
       ConnState#conn_state.database,
       #insert{collection = mc_worker_logic:update_dbcoll(Coll, <<"system.indexes">>), documents = [Index]}),
   {reply, ok, State};
-handle_call(Request, From, State) when ?OP_MSG(Request) ->  % MongoDB OpMsg request 
+handle_call(Request, From, State) when ?OP_MSG(Request) ->  % MongoDB OpMsg request
   process_op_msg_request(Request, From, State);
 handle_call(Request, From, State) when ?WRITE(Request) ->  % write requests (deprecated)
   process_write_request(Request, From, State);
