@@ -256,7 +256,7 @@ To authenticate use function `mc_worker_api:connect`, or
 By default timeout for all connections to connection gen_server is `infinity`.
 If you found problems with it - you can
 modify timeout.
-To modify it just add `mc_worker_call_timeout` with new value to your
+To modify it just add `mc_worker_call_timeout` with new value to `mongodb`
  applications's env config.
 
 Timeout for operations with cursors may be explicity passed to `mc_cursor:next/2`,

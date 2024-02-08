@@ -65,10 +65,7 @@ value_to_binary(_Value) ->
   <<>>.
 
 get_timeout() ->
-  case application:get_env(mc_worker_call_timeout) of
-    {ok, Time} -> Time;
-    undefined -> infinity
-  end.
+   application:get_env(mongodb, mc_worker_call_timeout, infinity).
 
 use_legacy_protocol(Connection) ->
     %% Latest MongoDB version that supported the non-op-msg based protocol was
