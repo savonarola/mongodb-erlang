@@ -138,40 +138,39 @@ command_query(#{server_type := ServerType, read_preference := RPrefs}, Command) 
   mongos_query_transform(ServerType, Q, RPrefs).
 
 -spec append_read_preference(selector(), readpref()) -> selector().
-append_read_preference(Selector = #{<<"$query">> := _}, RP) ->
-  Selector#{<<"$readPreference">> => RP};
+%%
+%% Tuples
+%%
 append_read_preference(Selector, RP) when is_tuple(Selector) andalso element(1, Selector) =:= <<"count">> ->
   bson:append(Selector, {<<"$readPreference">>, RP});
 append_read_preference(Selector, RP) when is_tuple(Selector) andalso element(1, Selector) =:= <<"$query">> ->
   bson:append(Selector, {<<"$readPreference">>, RP});
-append_read_preference(Selector, RP) ->
-  #{<<"$query">> => Selector, <<"$readPreference">> => RP}.
+append_read_preference(Selector, RP) when is_tuple(Selector) ->
+    #{<<"$query">> => Selector, <<"$readPreference">> => RP};
+%%
+%% Maps
+%%
+%% New style, with $query, $orderby, $readPreference top level fields
+append_read_preference(Selector = #{<<"$query">> := _}, RP) ->
+    Selector#{<<"$readPreference">> => RP};
+%% Old style, no top level $query, the whole Selector being the query.
+%% Convert to the new style, putting Selector into $query field
+append_read_preference(Selector0, RP) when is_map(Selector0) ->
+    Query = maps:without([<<"$orderby">>, <<"$readPreference">>], Selector0),
+    Selector = maps:with([<<"$orderby">>], Selector0),
+    Selector#{<<"$query">> => Query, <<"$readPreference">> => RP}.
 
-
-extract_read_preference(#{<<"$readPreference">> := RP} = Selector) ->
-    {RP,
-     maps:get(<<"$query">>, Selector, #{}),
-     maps:get(<<"$orderby">>, Selector, #{})};
 extract_read_preference(Selector) when is_map(Selector) ->
-    {#{<<"mode">> => <<"primary">>},
-     maps:get(<<"$query">>, Selector, Selector),
-     maps:get(<<"$orderby">>, Selector, #{})};%TODO also extract orderby and what else might be inside (strange but needed to pass test)
+    RP = maps:get(<<"$readPreference">>, Selector, #{<<"mode">> => <<"primary">>}),
+    Query = case Selector of
+        #{<<"$query">> := Q} -> Q;
+        _ -> maps:without([<<"$orderby">>, <<"$readPreference">>], Selector)
+    end,
+    OrderBy = maps:get(<<"$orderby">>, Selector, #{}),
+    {RP, Query, OrderBy};
 extract_read_preference(Selector) when is_tuple(Selector) ->
   Fields = bson:fields(Selector),
-  Query = case lists:keyfind(<<"$query">>, 1, Fields) of
-              {_, Q} -> Q;
-              false -> Selector
-          end,
-  OrderBy = case lists:keyfind(<<"$orderby">>, 1, Fields) of
-              {_, OB} -> OB;
-              false -> #{}
-          end,
-  case lists:keyfind(<<"$readPreference">>, 1, Fields) of
-      {_, RP} ->
-          {RP, Query, OrderBy};
-      false ->
-          {#{<<"mode">> => <<"primary">>}, Query, OrderBy}
-  end.
+  extract_read_preference(maps:from_list(Fields)).
 
 %%%===================================================================
 %%% Internal functions

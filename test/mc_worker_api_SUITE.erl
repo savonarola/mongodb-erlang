@@ -16,16 +16,34 @@ all() ->
     update,
     aggregate_sort_and_limit,
     insert_map,
-    find_sort_skip_limit_test,
     find_one_test,
-    run_map_command
+    run_map_command,
+    {group, selector_old_style},
+    {group, selector_explicit_query},
+    {group, selector_no_read_preference}
   ].
+
+groups() ->
+    [{selector_old_style, [], [find_sort_skip_limit_test]},
+     {selector_explicit_query, [], [find_sort_skip_limit_test]},
+     {selector_no_read_preference, [], [find_sort_skip_limit_test]}
+].
 
 init_per_suite(Config) ->
   application:ensure_all_started(mongodb),
   [{database, <<"test">>} | Config].
 
 end_per_suite(_Config) ->
+  ok.
+
+init_per_group(selector_old_style, Config) ->
+  [{selector_style, old_style} | Config];
+init_per_group(selector_explicit_query, Config) ->
+  [{selector_style, explicit_query} | Config];
+init_per_group(selector_no_read_preference, Config) ->
+  [{selector_style, no_read_preference} | Config].
+
+end_per_group(_Group, _Config) ->
   ok.
 
 init_per_testcase(Case, Config) ->
@@ -278,7 +296,26 @@ find_sort_skip_limit_test(Config) ->
     #{<<"key">> => <<"testG">>, <<"value">> => <<"valG">>, <<"tag">> => 16}
   ]),
 
-  Selector = #{<<"$query">> => {}, <<"$orderby">> => #{<<"tag">> => -1}},
+  Selector = case ?config(selector_style, Config) of
+    old_style ->
+        #{<<"$orderby">> =>
+              #{<<"tag">> => -1},
+          <<"$readPreference">> =>
+              #{<<"mode">> => <<"primary">>}
+        };
+    explicit_query ->
+        #{<<"$query">> => {},
+          <<"$orderby">> =>
+              #{<<"tag">> => -1},
+          <<"$readPreference">> =>
+              #{<<"mode">> => <<"primary">>}
+        };
+    no_read_preference ->
+        #{<<"$query">> => {},
+          <<"$orderby">> =>
+              #{<<"tag">> => -1}
+        }
+  end,
   Args = #{batchsize => 5, skip => 10},
   {ok, C} = mc_worker_api:find(Connection, Collection, Selector, Args),
 
